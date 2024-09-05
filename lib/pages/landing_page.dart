@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:swiftpath/pages/signup_page.dart';
+
+void main() => runApp(const MaterialApp(home: LandingPage()));
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
@@ -6,9 +9,6 @@ class LandingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("SwiftPath"),
-      ),
       body: Stack(
         children: [
           // Background image container
@@ -55,28 +55,38 @@ class LandingPage extends StatelessWidget {
             ),
           ),
 
-          // Bottom-aligned text
+          // Bottom-aligned text with click functionality
           Align(
             alignment: Alignment.bottomCenter,
-            child: Container(
-              width: double.infinity,
-              height: 100,
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(183, 255, 0, 0).withOpacity(1),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+            child: GestureDetector(
+              onTap: () {
+                // Navigate to the new page when tapped
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SignUpPage()),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(183, 255, 0, 0).withOpacity(1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
                 ),
-              ),
-              padding: const EdgeInsets.all(10.0),
-              child: const Center(
-                child: Text(
-                  "GET STARTED",
-                  style: TextStyle(
+                padding: const EdgeInsets.all(10.0),
+                child: const Center(
+                  child: Text(
+                    "GET STARTED",
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      fontFamily: "Montserrat"),
+                      fontFamily: "Montserrat",
+                    ),
+                  ),
                 ),
               ),
             ),
