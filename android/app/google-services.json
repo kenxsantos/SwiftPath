@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "153593255012",
+    "project_id": "swiftpath-77a56",
+    "storage_bucket": "swiftpath-77a56.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:153593255012:android:58207c5feb1552dce7bb71",
+        "android_client_info": {
+          "package_name": "com.swiftpath.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwC9GuZmD43n6-acpj48dSEQAtOnBko_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
