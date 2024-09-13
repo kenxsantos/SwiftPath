@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:swiftpath/pages/landing_page.dart';
 import 'package:swiftpath/pages/home_page.dart';
 import 'package:swiftpath/pages/signup_page.dart';
-
+import 'package:swiftpath/pages/incident_report.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -19,11 +19,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: const LandingPage(),
+      home:  ReportIncidentPage(),
       routes: {
         '/landing': (context) => const LandingPage(),
         '/homepage': (context) => const HomePage(),
         '/sign-in': (context) => const SignUpPage(),
+        '/incident': (context) => ReportIncidentPage(),
+        // '/thank-you':(context) => ThankyouPage(),
       },
     );
   }

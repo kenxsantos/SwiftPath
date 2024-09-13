@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 void main() => runApp(const MaterialApp(home: SignUpPage()));
 
@@ -16,8 +15,6 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     // Get screen width and height
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Stack(
@@ -47,15 +44,15 @@ class _SignUpPageState extends State<SignUpPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Ambulance Icon and SwiftPath Text
-                  Column(
-                    children: [
-                      Icon(
-                        FontAwesomeIcons.truckMedical, // Use the FontAwesome ambulance icon
-                        size: screenHeight * 0.1, // Adjust the size proportionally to the screen
-                        color: const Color.fromARGB(255, 228, 46, 46), // Set the icon color to match your design
-                      ),
-                    ],
+                  Positioned(
+                  // Adjust this value to control the overlap
+                  child: Image.asset(
+                    'assets/images/Ambulance_icon.png',
+                    width: 190, // Adjust the size of the image
+                    height: 90, // Adjust the size of the image
+                    fit: BoxFit.cover,
                   ),
+                ),       
                   const SizedBox(height: 10), // Spacing between SwiftPath text and form
                   // Form content
                   const Text(
