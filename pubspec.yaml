@@ -28,6 +28,10 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+<<<<<<< HEAD
+=======
+  firebase_core: ^2.31.0
+>>>>>>> 38b42d3fd0eff270ac97db66a588326837a907c1
   flutter:
     sdk: flutter
   image_picker: ^0.8.4+8
@@ -62,8 +66,12 @@ flutter:
   assets:
     - assets/images/mapbg.png
     - assets/images/ambulance.png
+<<<<<<< HEAD
     - assets/images/Ambulance_icon.png
     
+=======
+
+>>>>>>> 38b42d3fd0eff270ac97db66a588326837a907c1
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
