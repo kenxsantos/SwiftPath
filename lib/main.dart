@@ -20,12 +20,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home:  ReportIncidentPage(),
+      home:  const ReportIncidentPage(),
       routes: {
         '/landing': (context) => const LandingPage(),
         '/homepage': (context) => const HomePage(),
         '/sign-in': (context) => const SignUpPage(),
-        '/incident': (context) => ReportIncidentPage(),
+        '/incident': (context) => const ReportIncidentPage(),
         '/thank-you':(context) => const ThankyouPage(),
       },
     );

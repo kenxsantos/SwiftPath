@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {
-  runApp(MaterialApp(home: ReportIncidentPage()));
+  runApp(const MaterialApp(home: ReportIncidentPage()));
 }
 
 class ReportIncidentPage extends StatefulWidget {
+  const ReportIncidentPage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _ReportIncidentPageState createState() => _ReportIncidentPageState();
 }
 
@@ -17,8 +20,8 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
   XFile? _image;
 
   Future<void> _pickImage() async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     setState(() {
       _image = image;
     });
@@ -31,7 +34,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close, color: Colors.black),
+          icon: const Icon(Icons.close, color: Colors.black),
           onPressed: () {
             // Close action
           },
@@ -51,7 +54,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                     width: 100,
                     height: 100,
                   ),
-                  Text(
+                  const Text(
                     'SWIFTPATH',
                     style: TextStyle(
                       fontSize: 40,
@@ -61,7 +64,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 ],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Place of the Incident
             TextField(
@@ -73,7 +76,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Full Name of the Incident Reporter
             TextField(
@@ -85,7 +88,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Incident Description
             TextField(
@@ -98,23 +101,23 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
             // Upload Image Section
-            Text('Upload Image'),
+            const Text('Upload Image'),
 
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(
               children: [
                 ElevatedButton(
                   onPressed: _pickImage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
-                  child: Text('Upload Image'),
+                  child: const Text('Upload Image'),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 if (_image != null)
                   Expanded(
                     child: Text(
@@ -124,7 +127,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                   ),
               ],
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
 
             // Report Incident Button
             Center(
@@ -134,12 +137,12 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(255, 178, 39, 37),
-                  padding: EdgeInsets.symmetric(horizontal: 60, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'Report Incident',
                   style: TextStyle(
                     fontSize: 18,
