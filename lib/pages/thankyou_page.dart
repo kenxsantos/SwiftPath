@@ -20,6 +20,12 @@ class ThankyouPage extends StatelessWidget {
             ),
           ),
 
+// Semi-transparent overlay at the bottom
+          Container(
+            alignment: Alignment.bottomCenter,
+            color: Colors.black.withOpacity(0.5),
+          ),
+
           // Center circle with an overlapping ambulance image
           Center(
             child: Stack(
@@ -70,6 +76,7 @@ class ThankyouPage extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      
                     ),
                     textAlign: TextAlign.center,
                   ),

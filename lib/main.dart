@@ -1,32 +1,45 @@
+
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Import the generated file
+import 'package:google_fonts/google_fonts.dart';
+
 import 'package:swiftpath/pages/landing_page.dart';
 import 'package:swiftpath/pages/home_page.dart';
+import 'package:swiftpath/pages/login_page.dart';
 import 'package:swiftpath/pages/signup_page.dart';
-import 'package:swiftpath/pages/incident_report.dart';
-import 'package:swiftpath/pages/thankyou_page.dart';
-void main() {
+import 'package:swiftpath/pages/dashboard_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'SwiftPath',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
+        textTheme: GoogleFonts.poppinsTextTheme(
+          // Using Google Fonts throughout the app
+          Theme.of(context).textTheme,
+        ),
       ),
-      home:  const ReportIncidentPage(),
+      home: const LandingPage(),
       routes: {
         '/landing': (context) => const LandingPage(),
-        '/homepage': (context) => const HomePage(),
-        '/sign-in': (context) => const SignUpPage(),
-        '/incident': (context) => const ReportIncidentPage(),
-        '/thank-you':(context) => const ThankyouPage(),
+        '/homepage': (context) => HomePage(),
+        '/login': (context) => const LoginPage(),
+        '/signup': (context) => const SignUpPage(),
+        '/dashboard': (context) => DashboardPage(),
       },
     );
   }
