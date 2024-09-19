@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:swiftpath/pages/home_page.dart';
 
-void main() => runApp(const MaterialApp(home: LandingPage()));
+void main() => runApp(const MaterialApp(home: ThankyouPage()));
 
-class LandingPage extends StatelessWidget {
-  const LandingPage({super.key});
+class ThankyouPage extends StatelessWidget {
+  const ThankyouPage({super.key});
 
-  static String id = 'landing_page';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
+          // Background image container
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -20,64 +19,68 @@ class LandingPage extends StatelessWidget {
               ),
             ),
           ),
+
+// Semi-transparent overlay at the bottom
           Container(
             alignment: Alignment.bottomCenter,
             color: Colors.black.withOpacity(0.5),
           ),
+
+          // Center circle with an overlapping ambulance image
           Center(
             child: Stack(
               alignment: Alignment.center,
               children: [
+                // Circle container
                 Container(
-                  width: 200,
-                  height: 200,
+                  width: 180,
+                  height: 180,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.red.withOpacity(1),
+                    color: Colors.red.withOpacity(0.9),
                   ),
                 ),
+                // Ambulance image
                 Positioned(
                   child: Image.asset(
                     'assets/images/ambulance.png',
-                    width: 250,
-                    height: 200,
+                    width: 270, // Adjust the size of the image
+                    height: 200, // Adjust the size of the image
                     fit: BoxFit.cover,
                   ),
                 ),
               ],
             ),
           ),
-          Align(
+
+          // Bottom-aligned text
+          const Align(
             alignment: Alignment.bottomCenter,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomePage()),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(183, 255, 0, 0).withOpacity(1),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                padding: const EdgeInsets.all(10.0),
-                child: const Center(
-                  child: Text(
-                    "GET STARTED",
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 80.0), // Adjusted bottom padding
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Thank you for your coordination.',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      fontFamily: "Montserrat",
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
+                  Text(
+                    'Your report can save a life!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           ),
