@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:swiftpath/pages/edit_profile_page.dart';
 import 'firebase_options.dart'; // Import the generated file
 import 'package:google_fonts/google_fonts.dart';
 
@@ -40,6 +40,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
         '/dashboard': (context) => DashboardPage(),
+        '/edit_profile': (context) => const EditProfilePage()
       },
     );
   }

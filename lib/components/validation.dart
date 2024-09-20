@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:bcrypt/bcrypt.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class AuthValidation {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   static void showAlert({
     required BuildContext context,
     required String title,
@@ -71,10 +76,18 @@ class AuthValidation {
     };
 
     try {
-      await auth.createUserWithEmailAndPassword(
+      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+
+      // Store user details in Realtime Database
+      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+      await dbRef.child('users/${userCredential.user?.uid}').set({
+        'email': email,
+        'password': hashedPassword, // Store the hashed password
+      });
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
@@ -133,6 +146,34 @@ class AuthValidation {
         desc: errorMessage,
       );
       onFailure();
+    }
+  }
+
+  Future<void> _signOut(BuildContext context) async {
+    try {
+      if (_auth.currentUser?.providerData.any((provider) =>
+              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
+          false) {
+        await _googleSignIn.signOut();
+      }
+
+      await _auth.signOut();
+      Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      print('Sign out failed: $e');
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: const Text('Failed to sign out. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }
