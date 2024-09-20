@@ -9,7 +9,6 @@ class ReportIncidentPage extends StatefulWidget {
   const ReportIncidentPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ReportIncidentPageState createState() => _ReportIncidentPageState();
 }
 
@@ -113,7 +112,8 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                   onPressed: _pickImage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                   ),
                   child: const Text('Upload Image'),
                 ),
@@ -137,7 +137,8 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color.fromARGB(255, 178, 39, 37),
-                  padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 60, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
