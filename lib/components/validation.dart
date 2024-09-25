@@ -80,13 +80,13 @@ class AuthValidation {
         email: email,
         password: password,
       );
-      String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+      // String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
       // Store user details in Realtime Database
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
       await dbRef.child('users/${userCredential.user?.uid}').set({
         'email': email,
-        'password': hashedPassword, // Store the hashed password
+        'password': password, // Store the hashed password
       });
       onSuccess();
     } catch (e) {

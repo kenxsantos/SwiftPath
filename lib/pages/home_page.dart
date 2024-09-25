@@ -73,15 +73,15 @@ class HomePage extends StatelessWidget {
           backgroundColor: Colors.white,
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(25),
+              padding: const EdgeInsets.all(30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const TopScreenImage(screenImageName: 'home.jpg'),
+                  const TopScreenImage(screenImageName: 'ambulance.png'),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(
-                          right: 15.0, left: 15, bottom: 15),
+                          right: 15.0, left: 15, bottom: 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

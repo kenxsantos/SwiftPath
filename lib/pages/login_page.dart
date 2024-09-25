@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const TopScreenImage(screenImageName: 'signup.png'),
+                const TopScreenImage(screenImageName: 'ambulance.png'),
                 Expanded(
                   flex: 2,
                   child: Padding(
