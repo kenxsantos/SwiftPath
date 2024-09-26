@@ -26,47 +26,54 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _loadUserData();
   }
 
-  Future<void> _reauthenticateAndUpdateProfile(String email, String password) async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      try {
-        // Re-authenticate
-        AuthCredential credential = EmailAuthProvider.credential(email: email, password: password);
-        
-        await user.reauthenticateWithCredential(credential);
-
-        // Update email if different from current
-        if (_emailController.text.isNotEmpty) {
-          await user.verifyBeforeUpdateEmail(_emailController.text);
-        }
-
-        // Update password if it's not empty
-        if (_passwordController.text.isNotEmpty) {
-          await user.updatePassword(_passwordController.text);
-        }
-
-        // Update the Realtime Database (excluding password)
-        DatabaseReference userRef = _dbRef.child('users/${user.uid}');
-        await userRef.update({
-          'firstName': _firstNameController.text,
-          'lastName': _lastNameController.text,
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
-      } catch (e) {
-        print('Error updating profile: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
-        );
-      }
-    }
+  // Function to validate email format using RegExp
+  bool _isValidEmail(String email) {
+    // Basic email validation
+    final RegExp emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    return emailRegex.hasMatch(email);
   }
 
-  
+  Future<void> _reauthenticateAndUpdateProfile(String email, String password) async {
+  User? user = _auth.currentUser;
+  if (user != null) {
+    try {
+      // Re-authenticate
+      AuthCredential credential = EmailAuthProvider.credential(email: email, password: password);
+      await user.reauthenticateWithCredential(credential);
+
+      // Update email if it's different from current email
+      if (_emailController.text.isNotEmpty && _emailController.text != user.email) {
+        // Update Firebase Authentication email
+        await user.updateEmail(_emailController.text);
+        // Optionally, verify the new email with Firebase's verifyBeforeUpdateEmail()
+        // await user.verifyBeforeUpdateEmail(_emailController.text);
+      }
+
+      // Update password if it's not empty
+      if (_passwordController.text.isNotEmpty) {
+        await user.updatePassword(_passwordController.text);
+      }
+
+      // Update the Realtime Database (excluding password)
+      DatabaseReference userRef = _dbRef.child('users/${user.uid}');
+      await userRef.update({
+        'firstName': _firstNameController.text,
+        'lastName': _lastNameController.text,
+        'email': _emailController.text, // Also update email in the database
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully')),
+      );
+    } catch (e) {
+      print('Error updating profile: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
+      );
+    }
+  }
+}
+
 
   Future<void> _showReauthDialog() async {
     TextEditingController emailController = TextEditingController();
@@ -114,6 +121,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  void _onSavePressed() {
+    String email = _emailController.text;
+
+    // Check if email is valid before proceeding
+    if (_isValidEmail(email)) {
+      // If email is valid, show re-authentication dialog
+      _showReauthDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email format')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,9 +156,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 9.0),
             child: TextButton(
-              onPressed: () {
-                _showReauthDialog(); // Save button action
-              },
+              onPressed: _onSavePressed, // Save button action
               child: const Text(
                 'Save',
                 style: TextStyle(
