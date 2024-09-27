@@ -126,20 +126,42 @@ class _DashboardPageState extends State<DashboardPage>
                       onPressed: _toggleMenu,
                     ),
                   ),
-                  ListTile(
-                    title: Text(
-                      'Welcome, ${_auth.currentUser?.displayName ?? 'User'}!',
-                      style: Theme.of(context).textTheme.headlineMedium,
+                  // Add the image here
+                  Center(
+                    child: Image.asset(
+                      'assets/images/Ambulance_icon.png',
+                      height: 150, // You can adjust the height and width as necessary
+                      width: 300,
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}!',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 30, 
+                      ),
                     ),
                   ),
                   ListTile(
                     onTap: () {
-                      Navigator.pushNamed(context, '/edit_profile');
+                      Navigator.pushNamed(context, '/edit-profile');
                     },
                     leading: const Icon(Icons.person),
                     title: const Text('Profile'),
                   ),
-                  const Divider(),
+                  ListTile(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/route-history');
+                    },
+                    leading: const Icon(Icons.history),
+                    title: const Text('Route History'),
+                  ),
+                  ListTile(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/report-history');
+                    },
+                    leading: const Icon(Icons.pending_actions_outlined  ),
+                    title: const Text('Report History'),
+                  ),
                   ListTile(
                     leading: const Icon(Icons.logout),
                     title: const Text('Logout'),
