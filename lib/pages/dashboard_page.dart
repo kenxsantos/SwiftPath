@@ -104,6 +104,15 @@ class _DashboardPageState extends State<DashboardPage>
                   'You are logged in successfully.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/maps');
+                  },
+                  child: Text('Go To Maps'),
+                )
               ],
             ),
           ),
