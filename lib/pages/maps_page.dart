@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:fbroadcast/fbroadcast.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:swiftpath/common/globs.dart';
 import 'package:swiftpath/common/location_manager.dart';
@@ -24,7 +26,7 @@ class _MapScreenState extends State<MapScreen> {
   );
 
   late LatLng currentPosition;
-  // Set<Marker> markers = Set();
+  Set<Marker> markers = Set();
 
   Map<String, Marker> usersCarArr = {};
 
@@ -52,25 +54,24 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     apiCarJoin();
-    // addMarker();
-    // FBroadcast.instance().register("update_location", (newLocation, callback) {
-    //   if (newLocation is Position) {
-    //     var mid = MarkerId(ServiceCall.userUUID);
-    //     var newPosition = LatLng(newLocation.latitude, newLocation.longitude);
-    //     markers = {
-    //       Marker(
-    //           markerId: mid,
-    //           position: newPosition,
-    //           icon: icon ?? BitmapDescriptor.defaultMarker,
-
-    //           rotation: LocationManager.calculateDegrees(currentPosition, newPosition) ,
-    //           anchor: const Offset(0.5, 0.5)
-    //           )
-    //     };
-    //     currentPosition = newPosition;
-    //     setState(() {});
-    //   }
-    // });
+    addMarker();
+    FBroadcast.instance().register("update_location", (newLocation, callback) {
+      if (newLocation is Position) {
+        var mid = MarkerId(ServiceCall.userUUID);
+        var newPosition = LatLng(newLocation.latitude, newLocation.longitude);
+        markers = {
+          Marker(
+              markerId: mid,
+              position: newPosition,
+              icon: icon ?? BitmapDescriptor.defaultMarker,
+              rotation: LocationManager.calculateDegrees(
+                  currentPosition, newPosition),
+              anchor: const Offset(0.5, 0.5))
+        };
+        currentPosition = newPosition;
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -98,19 +99,21 @@ class _MapScreenState extends State<MapScreen> {
         CameraPosition(target: currentPosition)));
   }
 
-  // void addMarker() {
-  //   var mid = MarkerId(ServiceCall.userUUID);
-  //   markers.add(Marker(
-  //       markerId: mid,
-  //       position: currentPosition,
-  //       icon: icon ?? BitmapDescriptor.defaultMarker));
-  //   setState(() {});
-  // }
+  void addMarker() {
+    var mid = MarkerId(ServiceCall.userUUID);
+    markers.add(Marker(
+        markerId: mid,
+        position: currentPosition,
+        icon: icon ?? BitmapDescriptor.defaultMarker));
+    setState(() {});
+  }
 
   getIcon() async {
     var icon = await BitmapDescriptor.asset(
-        const ImageConfiguration(devicePixelRatio: 3.2), "assets/car.png",
-        width: 40, height: 40);
+        const ImageConfiguration(devicePixelRatio: 3.2),
+        "assets/images/car.png",
+        width: 40,
+        height: 40);
 
     setState(() {
       this.icon = icon;

@@ -111,7 +111,7 @@ class _DashboardPageState extends State<DashboardPage>
                   onPressed: () {
                     Navigator.pushNamed(context, '/maps');
                   },
-                  child: Text('Go To Maps'),
+                  child: const Text('Go To Maps'),
                 )
               ],
             ),
