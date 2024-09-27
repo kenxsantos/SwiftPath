@@ -112,6 +112,7 @@ class _DashboardPageState extends State<DashboardPage>
                     Navigator.pushNamed(context, '/maps');
                   },
                   child: Text('Go To Maps'),
+                  child: const Text('Go To Maps'),
                 )
               ],
             ),
