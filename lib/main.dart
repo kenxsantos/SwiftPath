@@ -1,10 +1,15 @@
-import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:swiftpath/pages/edit_profile_page.dart';
+import 'package:swiftpath/pages/report_history_page.dart';
+import 'package:swiftpath/pages/route_history_page.dart';
+import 'firebase_options.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:swiftpath/pages/landing_page.dart';
 import 'package:swiftpath/pages/home_page.dart';
 import 'package:swiftpath/pages/login_page.dart';
@@ -16,7 +21,6 @@ import 'package:swiftpath/common/location_manager.dart';
 import 'package:swiftpath/common/my_http_overrides.dart';
 import 'package:swiftpath/common/service_call.dart';
 import 'package:swiftpath/common/socket_manager.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -64,6 +68,10 @@ class MyApp extends StatelessWidget {
         '/homepage': (context) => HomePage(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
+        '/dashboard': (context) =>const DashboardPage(),
+        '/edit-profile': (context) => const EditProfilePage(),
+        '/route-history': (context) => const RouteHistoryPage(),
+        '/report-history': (context) => const ReportHistoryPage(),
         '/dashboard': (context) => const DashboardPage(),
         '/maps': (context) => const MapScreen()
       },
