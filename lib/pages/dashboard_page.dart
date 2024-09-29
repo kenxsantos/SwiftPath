@@ -109,9 +109,8 @@ class _DashboardPageState extends State<DashboardPage>
                     foregroundColor: Colors.blue,
                   ),
                   onPressed: () {
-                    Navigator.pushNamed(context, '/maps');
+                    Navigator.pushNamed(context, '/splash-screen');
                   },
-                  child: Text('Go To Maps'),
                   child: const Text('Go To Maps'),
                 )
               ],
@@ -140,14 +139,17 @@ class _DashboardPageState extends State<DashboardPage>
                   Center(
                     child: Image.asset(
                       'assets/images/Ambulance_icon.png',
-                      height: 150, // You can adjust the height and width as necessary
+                      height:
+                          150, // You can adjust the height and width as necessary
                       width: 300,
                     ),
                   ),
                   Center(
                     child: Text(
                       'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}!',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 30, 
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 30,
                       ),
                     ),
                   ),
@@ -169,7 +171,7 @@ class _DashboardPageState extends State<DashboardPage>
                     onTap: () {
                       Navigator.pushNamed(context, '/report-history');
                     },
-                    leading: const Icon(Icons.pending_actions_outlined  ),
+                    leading: const Icon(Icons.pending_actions_outlined),
                     title: const Text('Report History'),
                   ),
                   ListTile(
