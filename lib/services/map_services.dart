@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert' as convert;
 
 class MapServices {
-  final String key = "AIzaSyBA_nh_Y0-atbEMYp6tug38Nwc3Cd_rtGw";
+  final String key = "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg";
   final String types = 'geocode';
 
   Future<List<AutoCompleteResult>> searchPlaces(String searchInput) async {
