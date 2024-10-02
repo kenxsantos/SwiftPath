@@ -96,7 +96,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! funtion to retreive the autocompleter data from getplaces API of google maps
   getSuggestion(String input) async {
     String kPLACES_API_KEY =
-        "AIzaSyBA_nh_Y0-atbEMYp6tug38Nwc3Cd_rtGw"; //?Important!!!<<Place your API key Here,pass it as string>>
+        "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg"; //?Important!!!<<Place your API key Here,pass it as string>>
     String baseURL =
         'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     String request =
@@ -126,7 +126,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool isPhotos = false;
 
   final key =
-      "AIzaSyBA_nh_Y0-atbEMYp6tug38Nwc3Cd_rtGw"; //!Important!!!<<Place your API key Here>>
+      "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg"; //!Important!!!<<Place your API key Here>>
 
   var selectedPlaceDetails;
 
@@ -474,8 +474,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     allFavoritePlaces = [];
                                   });
                                 },
-                                icon:
-                                    const Icon(Icons.close, color: Colors.red))
+                                icon: const Icon(Icons.close,
+                                    color: Colors.white))
                           ],
                         ),
                       ),
@@ -533,7 +533,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   children: [
                                     const Text(
                                       'Address: ',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.normal,
                                         fontSize: 30,
                                       ),
@@ -687,14 +687,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       floatingActionButton: FabCircularMenuPlus(
           key: fabKey,
           alignment: Alignment.bottomLeft,
-          fabColor: Colors.blue.shade100,
-          fabOpenColor: Colors.red.shade100,
+          fabColor: Colors.red.shade400,
+          fabOpenColor: Colors.red.shade400,
           fabElevation: 5,
           ringDiameter: 350.0,
           ringWidth: 65.0,
           fabMargin: const EdgeInsets.only(left: 25),
-          ringColor: Colors.blue.shade100,
+          ringColor: Colors.red.shade400,
           fabSize: 60.0,
+          fabOpenIcon: const Icon(Icons.menu, color: Colors.white),
+          fabCloseIcon: const Icon(Icons.close, color: Colors.white),
           children: [
             IconButton(
                 onPressed: () {
@@ -725,7 +727,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     fabKey.currentState!.close();
                   }
                 },
-                icon: const Icon(Icons.search)),
+                icon: const Icon(Icons.search, color: Colors.white)),
             IconButton(
                 onPressed: () {
                   setState(() {
@@ -756,38 +758,45 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     fabKey.currentState!.close();
                   }
                 },
-                icon: const Icon(Icons.keyboard_hide_sharp)),
+                icon: const Icon(
+                  Icons.keyboard_hide_sharp,
+                  color: Colors.white,
+                )),
             IconButton(
-                onPressed: () {
-                  setState(() {
-                    showsearchbar = false;
-                    showautocompletesearchbar = false;
-                    _autocompletesearcheditingcontroller.clear();
-                    _originController.clear();
-                    _destinationController.clear();
-                    //
-                    _searchautocompleteAddr.value = '';
-                    _originAddr.value = '';
-                    _destinationAddr.value = '';
-                    //
-                    radiusSlider = false;
-                    pressedNear = false;
-                    cardTapped = false;
-                    getDirections = true;
-                  });
-                  if (_polylines.isNotEmpty) {
-                    _originController.text = '';
-                    _destinationController.text = '';
-                    _autocompletesearcheditingcontroller.text = '';
-                    _searcheditingcontroller.text = '';
-                    _markers = {};
-                    _polylines = {};
-                  }
-                  if (fabKey.currentState!.isOpen) {
-                    fabKey.currentState!.close();
-                  }
-                },
-                icon: const Icon(Icons.navigation))
+              onPressed: () {
+                setState(() {
+                  showsearchbar = false;
+                  showautocompletesearchbar = false;
+                  _autocompletesearcheditingcontroller.clear();
+                  _originController.clear();
+                  _destinationController.clear();
+                  //
+                  _searchautocompleteAddr.value = '';
+                  _originAddr.value = '';
+                  _destinationAddr.value = '';
+                  //
+                  radiusSlider = false;
+                  pressedNear = false;
+                  cardTapped = false;
+                  getDirections = true;
+                });
+                if (_polylines.isNotEmpty) {
+                  _originController.text = '';
+                  _destinationController.text = '';
+                  _autocompletesearcheditingcontroller.text = '';
+                  _searcheditingcontroller.text = '';
+                  _markers = {};
+                  _polylines = {};
+                }
+                if (fabKey.currentState!.isOpen) {
+                  fabKey.currentState!.close();
+                }
+              },
+              icon: const Icon(
+                Icons.navigation,
+                color: Colors.white,
+              ),
+            ),
           ]),
     );
   }
@@ -795,7 +804,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Function for GPS locator in stack
   Positioned showGPSlocator() {
     return Positioned(
-      bottom: MediaQuery.of(context).size.height * 0.12,
+      bottom: MediaQuery.of(context).size.height * 0.15,
       right: 5,
       child: FloatingActionButton(
         onPressed: () async {
@@ -805,8 +814,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             await controller.animateCamera(
               CameraUpdate.newCameraPosition(
                 CameraPosition(
-                    target: LatLng(value.latitude, value.longitude),
-                    zoom: 14.2),
+                  target: LatLng(value.latitude, value.longitude),
+                  zoom: 14.2,
+                ),
               ),
             );
             showautocompletesearchbar = false;
@@ -814,7 +824,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 info: "My Current Location");
           });
         },
-        child: const Icon(Icons.my_location_rounded),
+        shape: const CircleBorder(),
+        backgroundColor:
+            Colors.red.shade400, // Set the background color of the button
+        child: const Icon(
+          Icons.my_location_rounded,
+          color: Colors.white, // Set the icon color
+          size: 25, // Adjust the size of the icon
+        ),
       ),
     );
   }
@@ -822,7 +839,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Function for normal searchbarin stack
   Positioned searchbar() {
     return Positioned(
-      top: 30.0,
+      top: 50.0,
       right: 15.0,
       left: 15.0,
       child: Container(
@@ -830,8 +847,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         height: 50.0,
         width: double.infinity,
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10.0),
-            color: Colors.blue.shade100),
+            borderRadius: BorderRadius.circular(5.0), color: Colors.white),
         child: TextField(
           controller: _searcheditingcontroller,
           keyboardType: TextInputType.streetAddress,
@@ -847,10 +863,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           },
           decoration: InputDecoration(
               hintText: 'Enter Address',
+              contentPadding: const EdgeInsets.only(left: 15.0, top: 12.0),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.only(left: 15.0, top: 15.0),
               suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
+                  icon: const Icon(
+                    Icons.search,
+                    size: 20,
+                  ),
                   onPressed: () async {
                     FocusScope.of(context).requestFocus(FocusNode());
                     GoogleMapController mapController = await _controller.future
@@ -858,7 +877,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             value, _searcheditingcontroller.text,
                             zoom: 14));
                   },
-                  iconSize: 30.0)),
+                  iconSize: 20.0)),
           onChanged: (val) {
             setState(() {
               searchAddr = val;
@@ -873,7 +892,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //!Function for autocomplete searchbar in stack
   Positioned autocompletesearchbar() {
     return Positioned(
-      top: 30.0,
+      top: 50.0,
       right: 15.0,
       left: 15.0,
       child: Column(
@@ -882,8 +901,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             margin: const EdgeInsets.only(top: 8),
             width: double.infinity,
             decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: const Color.fromRGBO(187, 222, 251, 1)),
+                borderRadius: BorderRadius.circular(5.0), color: Colors.white),
             child: SizedBox(
               height: 50.0,
               child: ValueListenableBuilder(
@@ -906,14 +924,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         hintText: 'Search Auto Complete..',
                         border: InputBorder.none,
                         contentPadding:
-                            const EdgeInsets.only(left: 15.0, top: 15.0),
+                            const EdgeInsets.only(left: 15.0, top: 12.0),
                         suffixIcon: IconButton(
                             icon: value.trim().isNotEmpty
                                 ? const Icon(
                                     Icons.search,
+                                    size: 20,
                                   )
                                 : const Icon(
                                     Icons.close,
+                                    size: 20,
                                   ),
                             onPressed: () async {
                               value.trim().isNotEmpty
@@ -951,7 +971,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showAutoCompleteList() {
     return noreslt == false && _searchautocompleteAddr.value.trim().length >= 2
         ? Positioned(
-            top: 100,
+            top: 10,
             right: 20,
             left: 20,
             child: Container(
@@ -1075,163 +1095,186 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //!function to get direction from origin to destination in stack
   Positioned getDirectionAndOriginToDestinationNavigate() {
     return Positioned(
-      height: MediaQuery.of(context).size.height * 0.115,
+      height: MediaQuery.of(context).size.height * 1,
       top: 40.0,
       left: 10.0,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Column(children: [
-            Container(
-              height: 50.0,
-              width: MediaQuery.of(context).size.width * 0.85,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.blue.shade100,
-              ),
-              child: TextFormField(
-                onTap: () {
-                  _destinationAddr.value = '';
-                },
-                onEditingComplete: () {
-                  FocusManager.instance.primaryFocus?.nextFocus();
-                  _originAddr.value = '';
-                },
-                autofocus: true,
-                controller: _originController,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.next,
-                onChanged: (val) {
-                  //!<<<<debounce
-                  if (_debounce?.isActive ?? false) _debounce?.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 500), () {
-                    _originAddr.value = val;
-                  });
-                  //!debounce>>>>
-                },
-                decoration: const InputDecoration(
-                  filled: true,
-                  hintText: 'Origin',
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
-                  border: InputBorder.none,
+      right: 10.0,
+      child: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8.0),
+              color: Colors.white), // Background color for the whole Row
+          padding: const EdgeInsets.all(10.0), // Optional padding
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15.0),
+                        color: Colors.white,
+                      ),
+                      child: TextFormField(
+                        onTap: () {
+                          _destinationAddr.value = '';
+                        },
+                        onEditingComplete: () {
+                          FocusManager.instance.primaryFocus?.nextFocus();
+                          _originAddr.value = '';
+                        },
+                        autofocus: true,
+                        controller: _originController,
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.next,
+                        onChanged: (val) {
+                          if (_debounce?.isActive ?? false) _debounce?.cancel();
+                          _debounce =
+                              Timer(const Duration(milliseconds: 500), () {
+                            _originAddr.value = val;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          hintText: 'Origin',
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20.0, vertical: 15.0),
+                          border: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 3.0),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(5.0),
+                        color: Colors.white,
+                      ),
+                      child: TextFormField(
+                        onTap: () {
+                          _originAddr.value = '';
+                        },
+                        controller: _destinationController,
+                        textInputAction: TextInputAction.search,
+                        keyboardType: TextInputType.streetAddress,
+                        onChanged: (val) {
+                          if (_debounce?.isActive ?? false) _debounce?.cancel();
+                          _debounce =
+                              Timer(const Duration(milliseconds: 500), () {
+                            _destinationAddr.value = val;
+                          });
+                        },
+                        onEditingComplete: () async {
+                          var directions = await MapServices().getDirections(
+                              _originController.text,
+                              _destinationController.text);
+                          _markers = {};
+                          _polylines = {};
+                          gotoPlace(
+                              directions['start_location']['lat'],
+                              directions['start_location']['lng'],
+                              directions['end_location']['lat'],
+                              directions['end_location']['lng'],
+                              directions['bounds_ne'],
+                              directions['bounds_sw']);
+                          _setPolyline(directions['polyline_decoded']);
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          _originAddr.value = '';
+                          _destinationAddr.value = '';
+                        },
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white, // Set the background to gray
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20.0, vertical: 15.0),
+                          border: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.black),
+                          ),
+                          hintText: 'Destination',
+                          suffixIcon: SizedBox(
+                            width: 96.0,
+                            child: Row(
+                              children: [
+                                IconButton(
+                                    onPressed: () async {
+                                      var directions = await MapServices()
+                                          .getDirections(_originController.text,
+                                              _destinationController.text);
+                                      _markers = {};
+                                      _polylines = {};
+                                      gotoPlace(
+                                          directions['start_location']['lat'],
+                                          directions['start_location']['lng'],
+                                          directions['end_location']['lat'],
+                                          directions['end_location']['lng'],
+                                          directions['bounds_ne'],
+                                          directions['bounds_sw']);
+                                      _setPolyline(
+                                          directions['polyline_decoded']);
+                                      FocusManager.instance.primaryFocus
+                                          ?.unfocus();
+                                      _originAddr.value = '';
+                                      _destinationAddr.value = '';
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.search)),
+                                IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        getDirections = false;
+                                        _originController.text = '';
+                                        _destinationController.text = '';
+                                        _markers = {};
+                                        _polylines = {};
+                                      });
+                                    },
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                    ))
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            SizedBox(
-              height: 3.0,
-              width: MediaQuery.of(context).size.width * 0.85,
-            ),
-            Container(
-              height: 50.0,
-              width: MediaQuery.of(context).size.width * 0.85,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.blue.shade100,
-              ),
-              child: TextFormField(
-                onTap: () {
-                  _originAddr.value = '';
-                },
-                controller: _destinationController,
-                textInputAction: TextInputAction.search,
-                keyboardType: TextInputType.streetAddress,
-                onChanged: (val) {
-                  //!<<<<debounce
-                  if (_debounce?.isActive ?? false) _debounce?.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 500), () {
-                    _destinationAddr.value = val;
-                  });
-                  //!debounce>>>>
-                },
-                onEditingComplete: () async {
-                  var directions = await MapServices().getDirections(
-                      _originController.text, _destinationController.text);
-                  _markers = {};
-                  _polylines = {};
-                  gotoPlace(
-                      directions['start_location']['lat'],
-                      directions['start_location']['lng'],
-                      directions['end_location']['lat'],
-                      directions['end_location']['lng'],
-                      directions['bounds_ne'],
-                      directions['bounds_sw']);
-                  _setPolyline(directions['polyline_decoded']);
-                  FocusManager.instance.primaryFocus
-                      ?.unfocus(); //to hide keyboard upon pressing done
-                  _originAddr.value = '';
-                  _destinationAddr.value = '';
-                },
-                decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20.0, vertical: 15.0),
-                    border: InputBorder.none,
-                    hintText: 'Destination',
-                    suffixIcon: SizedBox(
-                        width: 96.0,
-                        child: Row(
-                          children: [
-                            IconButton(
-                                onPressed: () async {
-                                  var directions = await MapServices()
-                                      .getDirections(_originController.text,
-                                          _destinationController.text);
-                                  _markers = {};
-                                  _polylines = {};
-                                  gotoPlace(
-                                      directions['start_location']['lat'],
-                                      directions['start_location']['lng'],
-                                      directions['end_location']['lat'],
-                                      directions['end_location']['lng'],
-                                      directions['bounds_ne'],
-                                      directions['bounds_sw']);
-                                  _setPolyline(directions['polyline_decoded']);
-                                  FocusManager.instance.primaryFocus
-                                      ?.unfocus(); //to hide keyboard upon pressing done
-                                  _originAddr.value = '';
-                                  _destinationAddr.value = '';
-                                  setState(() {});
-                                },
-                                icon: const Icon(Icons.search)),
-                            IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    getDirections = false;
-                                    _originController.text = '';
-                                    _destinationController.text = '';
-                                    _markers = {};
-                                    _polylines = {};
-                                  });
-                                },
-                                icon: const Icon(Icons.close))
-                          ],
-                        ))),
-              ),
-            )
-          ]),
-          const SizedBox(
-            width: 5,
-          ),
-          Container(
-            width: MediaQuery.of(context).size.width * 0.10,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: Colors.red.shade100.withOpacity(0.5),
-              border:
-                  Border.all(width: 2, color: Colors.black54.withOpacity(0.80)),
-            ),
-            child: RotatedBox(
-              quarterTurns: 1,
-              child: IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.compare_arrows_outlined,
+              const SizedBox(width: 5),
+              Container(
+                width: MediaQuery.of(context).size.width * 0.10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white, // Circle's background color
                 ),
-                color: Colors.black54,
+                child: RotatedBox(
+                  quarterTurns: 1,
+                  child: IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.compare_arrows_outlined),
+                    color: Colors.black,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1240,7 +1283,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showOriginAutoCompleteListUponNavigation() {
     return originnoreslt == false && _originAddr.value.trim().length >= 2
         ? Positioned(
-            top: 150,
+            top: 180,
             right: 20,
             left: 20,
             child: Container(
@@ -1315,9 +1358,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 150,
-            right: 20,
-            left: 20,
+            top: 180,
+            right: 10,
+            left: 10,
             child: Container(
               height: 200.0,
               decoration: BoxDecoration(
@@ -1326,6 +1369,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               child: Center(
                 child: Column(children: [
+                  Positioned(
+                      top: 10,
+                      right: 0,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close, // Use the close icon
+                          color: Colors.black,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            getDirections = false;
+                            _originController.clear();
+                            _destinationController.clear();
+                          });
+                        },
+                      )),
                   GestureDetector(
                     onTap: () async {
                       developer.log('pressed');
@@ -1361,17 +1420,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ],
                       ),
                       child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.my_location_rounded,
                             color: Colors.black45,
-                            size: 35,
+                            size: 20,
                           ),
-                          Text(" Use Your Location",
-                              textScaleFactor: 1.5,
-                              style: TextStyle(fontWeight: FontWeight.w500)),
+                          Text(" Use your lsocation",
+                              style: TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),
@@ -1379,25 +1439,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   const Text('No results to show',
                       style: TextStyle(fontWeight: FontWeight.w400)),
                   const SizedBox(height: 5.0),
-                  SizedBox(
-                    width: 125.0,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          getDirections = false;
-                          _originController.clear();
-                          _destinationController.clear();
-                        });
-                      },
-                      child: const Center(
-                        child: Text(
-                          'Close this',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w300),
-                        ),
-                      ),
-                    ),
-                  )
                 ]),
               ),
             ));
