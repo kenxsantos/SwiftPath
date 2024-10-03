@@ -14,6 +14,7 @@ import 'package:swiftpath/pages/login_page.dart';
 import 'package:swiftpath/pages/signup_page.dart';
 import 'package:swiftpath/pages/dashboard_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 SharedPreferences? prefs;
 void main() async {
@@ -21,6 +22,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await dotenv.load(fileName: ".env");
   runApp(const ProviderScope(child: MyApp()));
 }
 
