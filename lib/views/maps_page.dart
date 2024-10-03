@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:ui' as ui;
-import 'package:dartz/dartz.dart';
 import 'package:fab_circular_menu_plus/fab_circular_menu_plus.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:flutter/material.dart';
@@ -14,11 +13,10 @@ import 'package:flutter_rating_stars/flutter_rating_stars.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-// import 'package:google_maps/constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/auto_complete_result.dart';
 import '../services/map_services.dart';
 
@@ -49,6 +47,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool cardTapped = false;
   bool pressedNear = false;
   bool getDirections = false;
+  final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 // !global keys
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
 //! variables & Constants
@@ -95,12 +94,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 //! funtion to retreive the autocompleter data from getplaces API of google maps
   getSuggestion(String input) async {
-    String kPLACES_API_KEY =
-        "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg"; //?Important!!!<<Place your API key Here,pass it as string>>
+    //?Important!!!<<Place your API key Here,pass it as string>>
     String baseURL =
         'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     String request =
-        '$baseURL?input=$input&key=$kPLACES_API_KEY&sessiontoken=$_sessionToken';
+        '$baseURL?input=$input&key=$google_map_key&sessiontoken=$_sessionToken';
     var response = await http.get(Uri.parse(request));
     var body = response.body.toString();
     developer.log(body);
@@ -125,8 +123,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool isReviews = true;
   bool isPhotos = false;
 
-  final key =
-      "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg"; //!Important!!!<<Place your API key Here>>
+  //!Important!!!<<Place your API key Here>>
 
   var selectedPlaceDetails;
 
@@ -521,7 +518,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     ),
                                     image: DecorationImage(
                                         image: NetworkImage(placeImg != ''
-                                            ? 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=$placeImg&key=$key'
+                                            ? 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=$placeImg&key=$google_map_key'
                                             : 'https://pic.onlinewebfonts.com/svg/img_546302.png'),
                                         fit: BoxFit.cover)),
                               ),
@@ -971,9 +968,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showAutoCompleteList() {
     return noreslt == false && _searchautocompleteAddr.value.trim().length >= 2
         ? Positioned(
-            top: 10,
-            right: 20,
-            left: 20,
+            top: 120,
+            right: 15,
+            left: 15,
             child: Container(
               height: 200,
               decoration: BoxDecoration(
@@ -1053,43 +1050,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 100,
-            right: 20,
-            left: 20,
+            top: 120,
+            right: 15,
+            left: 15,
             child: Container(
               height: 200.0,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10.0),
                 color: Colors.red.shade100.withOpacity(0.7),
               ),
-              child: Center(
-                child: Column(children: [
-                  const Text('No results to show',
-                      style: TextStyle(fontWeight: FontWeight.w400)),
-                  const SizedBox(height: 5.0),
-                  SizedBox(
-                    width: 125.0,
-                    child: ElevatedButton(
+              child: Stack(
+                children: [
+                  // Close Button positioned at the top-right corner
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close, // Close icon
+                        color: Colors.black,
+                      ),
                       onPressed: () {
                         setState(() {
                           showautocompletesearchbar = false;
                           _autocompletesearcheditingcontroller.clear();
                         });
                       },
-                      child: const Center(
-                        child: Text(
-                          'Close this',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w300),
-                        ),
-                      ),
                     ),
-                  )
-                ]),
+                  ),
+                  // Centered content
+                  const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'No results to show',
+                          style: TextStyle(fontWeight: FontWeight.w400),
+                        ),
+                        SizedBox(height: 5.0),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ));
-
-    //
+            ),
+          );
   }
 
 //!function to get direction from origin to destination in stack
@@ -1206,50 +1211,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             borderSide: BorderSide(color: Colors.black),
                           ),
                           hintText: 'Destination',
-                          suffixIcon: SizedBox(
-                            width: 96.0,
-                            child: Row(
-                              children: [
-                                IconButton(
-                                    onPressed: () async {
-                                      var directions = await MapServices()
-                                          .getDirections(_originController.text,
-                                              _destinationController.text);
-                                      _markers = {};
-                                      _polylines = {};
-                                      gotoPlace(
-                                          directions['start_location']['lat'],
-                                          directions['start_location']['lng'],
-                                          directions['end_location']['lat'],
-                                          directions['end_location']['lng'],
-                                          directions['bounds_ne'],
-                                          directions['bounds_sw']);
-                                      _setPolyline(
-                                          directions['polyline_decoded']);
-                                      FocusManager.instance.primaryFocus
-                                          ?.unfocus();
-                                      _originAddr.value = '';
-                                      _destinationAddr.value = '';
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.search)),
-                                IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        getDirections = false;
-                                        _originController.text = '';
-                                        _destinationController.text = '';
-                                        _markers = {};
-                                        _polylines = {};
-                                      });
-                                    },
-                                    icon: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                    ))
-                              ],
-                            ),
-                          ),
+                          suffixIcon: IconButton(
+                              onPressed: () async {
+                                var directions = await MapServices()
+                                    .getDirections(_originController.text,
+                                        _destinationController.text);
+                                _markers = {};
+                                _polylines = {};
+                                gotoPlace(
+                                    directions['start_location']['lat'],
+                                    directions['start_location']['lng'],
+                                    directions['end_location']['lat'],
+                                    directions['end_location']['lng'],
+                                    directions['bounds_ne'],
+                                    directions['bounds_sw']);
+                                _setPolyline(directions['polyline_decoded']);
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                _originAddr.value = '';
+                                _destinationAddr.value = '';
+                                setState(() {});
+                              },
+                              icon: const Icon(
+                                Icons.search,
+                                color: Colors.black,
+                                size: 20,
+                              )),
                         ),
                       ),
                     ),
@@ -1259,17 +1245,75 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               const SizedBox(width: 5),
               Container(
                 width: MediaQuery.of(context).size.width * 0.10,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white, // Circle's background color
                 ),
-                child: RotatedBox(
-                  quarterTurns: 1,
-                  child: IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.compare_arrows_outlined),
-                    color: Colors.black,
-                  ),
+                child: Column(
+                  mainAxisAlignment:
+                      MainAxisAlignment.center, // Center the icons vertically
+                  children: [
+                    // Close button placed at the top
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          getDirections = false;
+                          _originController.text = '';
+                          _destinationController.text = '';
+                          _markers = {};
+                          _polylines = {};
+                        });
+                      },
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                    ),
+                    // Rotated compare arrows icon below the close button
+                    RotatedBox(
+                      quarterTurns: 1, // Rotate the icon
+                      child: IconButton(
+                        onPressed: () async {
+                          setState(() {
+                            // Switch the text values between origin and destination
+                            String temp = _originController.text;
+                            _originController.text =
+                                _destinationController.text;
+                            _destinationController.text = temp;
+                          });
+
+                          // Fetch new directions based on the swapped values
+                          var directions = await MapServices().getDirections(
+                            _originController.text,
+                            _destinationController.text,
+                          );
+
+                          // Clear existing markers and polylines
+                          setState(() {
+                            _markers = {};
+                            _polylines = {};
+
+                            // Update the map with the new directions and polylines
+                            gotoPlace(
+                              directions['start_location']['lat'],
+                              directions['start_location']['lng'],
+                              directions['end_location']['lat'],
+                              directions['end_location']['lng'],
+                              directions['bounds_ne'],
+                              directions['bounds_sw'],
+                            );
+                            _setPolyline(directions['polyline_decoded']);
+                          });
+                        },
+                        icon: const Icon(
+                          Icons.compare_arrows_outlined,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                      ),
+                    )
+                  ],
                 ),
               ),
             ],
@@ -1284,8 +1328,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return originnoreslt == false && _originAddr.value.trim().length >= 2
         ? Positioned(
             top: 180,
-            right: 20,
-            left: 20,
+            right: 10,
+            left: 10,
             child: Container(
               height: 200,
               decoration: BoxDecoration(
@@ -1367,90 +1411,102 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 borderRadius: BorderRadius.circular(10.0),
                 color: Colors.red.shade100.withOpacity(0.7),
               ),
-              child: Center(
-                child: Column(children: [
+              child: Stack(
+                children: [
                   Positioned(
-                      top: 10,
-                      right: 0,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.close, // Use the close icon
-                          color: Colors.black,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            getDirections = false;
-                            _originController.clear();
-                            _destinationController.clear();
-                          });
-                        },
-                      )),
-                  GestureDetector(
-                    onTap: () async {
-                      developer.log('pressed');
-                      await getcurrentuserlocation().then((value) {
-                        placemarkFromCoordinates(
-                                value.latitude, value.longitude)
-                            .then((placemark) {
-                          _originController.text =
-                              '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} ${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} ${placemark.reversed.last.country}';
-                          _originController.selection =
-                              TextSelection.fromPosition(TextPosition(
-                                  offset: _originController.text.length));
-                          FocusManager.instance.primaryFocus?.nextFocus();
-                          _originAddr.value = '';
+                    top: 10,
+                    right: 10, // Close button positioned to the top-right
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close, // Use the close icon
+                        color: Colors.black,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          getDirections = false;
+                          _originController.clear();
+                          _destinationController.clear();
                         });
-                      }).then((value) =>
-                          FocusManager.instance.primaryFocus?.nextFocus());
-                    },
-                    child: Container(
-                      height: 45,
-                      padding: const EdgeInsets.all(5),
-                      margin: const EdgeInsets.only(
-                          top: 10, right: 15, left: 15, bottom: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white60.withOpacity(1),
-                        borderRadius: BorderRadius.circular(10.0),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.grey,
-                            offset: Offset(0.0, 1.0), //(x,y)
-                            blurRadius: 3.0,
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.my_location_rounded,
-                            color: Colors.black45,
-                            size: 20,
-                          ),
-                          Text(" Use your lsocation",
-                              style: TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w500)),
-                        ],
-                      ),
+                      },
                     ),
                   ),
-                  const Text('No results to show',
-                      style: TextStyle(fontWeight: FontWeight.w400)),
-                  const SizedBox(height: 5.0),
-                ]),
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            developer.log('pressed');
+                            await getcurrentuserlocation().then((value) {
+                              placemarkFromCoordinates(
+                                      value.latitude, value.longitude)
+                                  .then((placemark) {
+                                _originController.text =
+                                    '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} ${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} ${placemark.reversed.last.country}';
+                                _originController.selection =
+                                    TextSelection.fromPosition(TextPosition(
+                                        offset: _originController.text.length));
+                                FocusManager.instance.primaryFocus?.nextFocus();
+                                _originAddr.value = '';
+                              });
+                            }).then((value) => FocusManager
+                                .instance.primaryFocus
+                                ?.nextFocus());
+                          },
+                          child: Container(
+                            height: 45,
+                            padding: const EdgeInsets.all(5),
+                            margin: const EdgeInsets.only(
+                                top: 10, right: 15, left: 15, bottom: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white60.withOpacity(1),
+                              borderRadius: BorderRadius.circular(10.0),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.grey,
+                                  offset: Offset(0.0, 1.0), //(x,y)
+                                  blurRadius: 3.0,
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.my_location_rounded,
+                                  color: Colors.black45,
+                                  size: 20,
+                                ),
+                                Text(" Use your location",
+                                    style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10.0),
+                        const Text(
+                          'No results to show',
+                          style: TextStyle(fontWeight: FontWeight.w400),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ));
+            ),
+          );
   }
 
   Positioned showDestinationAutoCompleteListUponNavigation() {
     return destinationnorelt == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
-            top: 150,
-            right: 20,
-            left: 20,
+            top: 180,
+            right: 10,
+            left: 10,
             child: Container(
               height: 200,
               decoration: BoxDecoration(
@@ -1533,7 +1589,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 150,
+            top: 180,
             right: 20,
             left: 20,
             child: Container(
@@ -1542,14 +1598,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 borderRadius: BorderRadius.circular(10.0),
                 color: Colors.red.shade100.withOpacity(0.7),
               ),
-              child: Center(
-                child: Column(children: [
-                  const Text('No results to show',
-                      style: TextStyle(fontWeight: FontWeight.w400)),
-                  const SizedBox(height: 5.0),
-                  SizedBox(
-                    width: 125.0,
-                    child: ElevatedButton(
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close, // Use the close icon
+                        color: Colors.black,
+                      ),
                       onPressed: () {
                         setState(() {
                           getDirections = false;
@@ -1557,18 +1615,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           _destinationController.clear();
                         });
                       },
-                      child: const Center(
-                        child: Text(
-                          'Close this',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w300),
-                        ),
-                      ),
                     ),
-                  )
-                ]),
+                  ),
+                  const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'No results to show',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        SizedBox(height: 5.0),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ));
+            ),
+          );
   }
 
 //! functction for naviagtion to a spectific latlang
@@ -1687,7 +1753,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   borderRadius: BorderRadius.circular(10.0),
                   image: DecorationImage(
                       image: NetworkImage(
-                          'https://maps.googleapis.com/maps/api/place/photo?maxwidth=$maxWidth&maxheight=$maxHeight&photo_reference=$placeImg&key=$key'),
+                          'https://maps.googleapis.com/maps/api/place/photo?maxwidth=$maxWidth&maxheight=$maxHeight&photo_reference=$placeImg&key=$google_map_key'),
                       fit: BoxFit.cover))),
           const SizedBox(height: 10.0),
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
@@ -1854,7 +1920,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       ),
                                       image: DecorationImage(
                                           image: NetworkImage(placeImg != ''
-                                              ? 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=$placeImg&key=$key'
+                                              ? 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=$placeImg&key=$google_map_key'
                                               : 'https://pic.onlinewebfonts.com/svg/img_546302.png'),
                                           fit: BoxFit.cover)),
                                 )
