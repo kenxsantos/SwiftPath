@@ -146,7 +146,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                   Center(
                     child: Text(
-                      'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}!',
+                      'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 30,
