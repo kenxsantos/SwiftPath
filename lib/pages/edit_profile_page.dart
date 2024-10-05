@@ -13,8 +13,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -24,6 +23,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _fetchUserEmail();
+  }
+
+  Future<void> _fetchUserEmail() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      List<String> nameParts = user.displayName!.split(' ');
+
+      String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+      String lastName =
+          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      _emailController.text = user.email ?? "";
+      _fullNameController.text = user.displayName ?? "";
+    }
   }
 
   // Function to validate email format using RegExp
@@ -33,47 +48,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return emailRegex.hasMatch(email);
   }
 
-  Future<void> _reauthenticateAndUpdateProfile(String email, String password) async {
-  User? user = _auth.currentUser;
-  if (user != null) {
-    try {
-      // Re-authenticate
-      AuthCredential credential = EmailAuthProvider.credential(email: email, password: password);
-      await user.reauthenticateWithCredential(credential);
+  Future<void> _reauthenticateAndUpdateProfile(
+      String email, String password) async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      try {
+        // Re-authenticate
+        AuthCredential credential =
+            EmailAuthProvider.credential(email: email, password: password);
+        await user.reauthenticateWithCredential(credential);
 
-      // Update email if it's different from current email
-      if (_emailController.text.isNotEmpty && _emailController.text != user.email) {
-        // Update Firebase Authentication email
-        await user.updateEmail(_emailController.text);
-        // Optionally, verify the new email with Firebase's verifyBeforeUpdateEmail()
-        // await user.verifyBeforeUpdateEmail(_emailController.text);
+        // Update email if it's different from current email
+        if (_emailController.text.isNotEmpty &&
+            _emailController.text != user.email) {
+          // Update Firebase Authentication email
+          await user.verifyBeforeUpdateEmail(_emailController.text);
+          // Optionally, verify the new email with Firebase's verifyBeforeUpdateEmail()
+          // await user.verifyBeforeUpdateEmail(_emailController.text);
+        }
+
+        // Update password if it's not empty
+        if (_passwordController.text.isNotEmpty) {
+          await user.updatePassword(_passwordController.text);
+        }
+
+        // Update the Realtime Database (excluding password)
+        DatabaseReference userRef = _dbRef.child('users/${user.uid}');
+        await userRef.update({
+          'fullname': _fullNameController.text,
+          'email': _emailController.text, // Also update email in the database
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+      } catch (e) {
+        print('Error updating profile: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
+        );
       }
-
-      // Update password if it's not empty
-      if (_passwordController.text.isNotEmpty) {
-        await user.updatePassword(_passwordController.text);
-      }
-
-      // Update the Realtime Database (excluding password)
-      DatabaseReference userRef = _dbRef.child('users/${user.uid}');
-      await userRef.update({
-        'firstName': _firstNameController.text,
-        'lastName': _lastNameController.text,
-        'email': _emailController.text, // Also update email in the database
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
-      );
-    } catch (e) {
-      print('Error updating profile: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
-      );
     }
   }
-}
-
 
   Future<void> _showReauthDialog() async {
     TextEditingController emailController = TextEditingController();
@@ -111,8 +127,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: const Text('Re-authenticate'),
               onPressed: () async {
                 // Attempt re-authentication with the provided email and password
-                await _reauthenticateAndUpdateProfile(emailController.text, passwordController.text);
-                Navigator.of(context).pop(); // Close the dialog after successful re-authentication
+                await _reauthenticateAndUpdateProfile(
+                    emailController.text, passwordController.text);
+                Navigator.of(context)
+                    .pop(); // Close the dialog after successful re-authentication
               },
             ),
           ],
@@ -210,28 +228,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 20),
               // Form Fields for user information
-              TextField(
-                controller: _firstNameController,
-                decoration: InputDecoration(
-                  labelText: 'First Name',
-                  labelStyle: const TextStyle(fontSize: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                textAlign: TextAlign.center,
-              ),
               const SizedBox(height: 10),
               TextField(
-                controller: _lastNameController,
+                controller: _fullNameController,
                 decoration: InputDecoration(
-                  labelText: 'Last Name',
+                  labelText: 'Full Name',
                   labelStyle: const TextStyle(fontSize: 16),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               TextField(
@@ -244,7 +250,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                 ),
                 keyboardType: TextInputType.emailAddress,
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               TextField(
@@ -257,7 +262,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                 ),
                 obscureText: true,
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
             ],
@@ -275,8 +279,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       DataSnapshot snapshot = (await userRef.once()) as DataSnapshot;
       if (snapshot.exists) {
         var data = snapshot.value as Map<dynamic, dynamic>;
-        _firstNameController.text = data['firstName'] ?? '';
-        _lastNameController.text = data['lastName'] ?? '';
+        _fullNameController.text = data['fullname'] ?? '';
         _emailController.text = user.email ?? '';
         _profilePictureUrl = data['profilePictureUrl'];
         setState(() {});

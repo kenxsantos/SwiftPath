@@ -2,11 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart';
-
-import 'package:location/location.dart' as loc;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
-// import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class IncidentReportPage extends StatefulWidget {
   const IncidentReportPage({super.key});
@@ -20,12 +18,32 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   String? _address;
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController(); // Email controller
   String? _imageUrl;
+  File? _image; // Store the selected image file
   bool _isUploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserEmail(); // Fetch email when the page initializes
+  }
+
+  // Fetch user email from Firebase Auth
+  Future<void> _fetchUserEmail() async {
+    User? user =
+        FirebaseAuth.instance.currentUser; // Get the currently logged-in user
+    if (user != null) {
+      _emailController.text = user.email ?? "";
+      _nameController.text =
+          user.displayName ?? ""; // Set the email in the text field
+    }
+  }
 
   // Method to get the current location of the user
   Future<void> _getCurrentLocation() async {
-    final location = loc.Location();
+    final location = Location();
 
     bool serviceEnabled = await location.serviceEnabled();
     if (!serviceEnabled) {
@@ -46,17 +64,43 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   // Method to upload the image to Firebase Storage
   Future<void> _uploadImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    // Allow user to choose directly from camera or gallery
+    final pickedFile = await showDialog<XFile>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          actions: [
+            TextButton(
+              child: const Text('Camera'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.camera));
+              },
+            ),
+            TextButton(
+              child: const Text('Gallery'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.gallery));
+              },
+            ),
+          ],
+        );
+      },
+    );
+
     if (pickedFile != null) {
       setState(() {
         _isUploading = true;
+        _image = File(pickedFile.path); // Store the picked image
       });
 
       // Upload image to Firebase Storage
       String fileName = pickedFile.path.split('/').last;
       Reference storageRef =
           FirebaseStorage.instance.ref().child('incident_images/$fileName');
-      await storageRef.putFile(File(pickedFile.path));
+      await storageRef.putFile(_image!);
 
       // Get the image URL
       _imageUrl = await storageRef.getDownloadURL();
@@ -75,63 +119,165 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       await _getCurrentLocation();
     }
 
-    if (_imageUrl != null && _locationData != null) {
+    if (_nameController.text.isNotEmpty &&
+        _emailController.text.isNotEmpty &&
+        _detailsController.text.isNotEmpty &&
+        _imageUrl != null) {
       // Push the incident data to the Realtime Database
-      await dbRef.child('incident-report/').push().set({
+      await dbRef.child('incident-reports/').push().set({
         'image_url': _imageUrl,
         'latitude': _locationData!.latitude,
         'longitude': _locationData!.longitude,
         'address': _address, // Optionally get address using reverse geocoding
         'details': _detailsController.text,
         'reporter_name': _nameController.text,
+        'reporter_email': _emailController.text, // Include email in the report
         'timestamp': DateTime.now().toIso8601String(),
       });
 
       // Show a success message
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Incident reported successfully!'),
-      ));
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Success'),
+            content: const Text('Incident reported successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
 
       // Clear the form after submission
       _nameController.clear(); // Reset reporter name
       _detailsController.clear(); // Reset incident details
       _imageUrl = null; // Reset image URL
+      _image = null; // Reset image file
       _locationData = null; // Optionally reset location data
       _address = null; // Optionally reset address
 
       setState(() {});
     } else {
-      // Show an error message if details are missing
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Failed to report incident. Please fill all details.'),
-      ));
+      // Show an alert dialog if required fields are missing
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Required Fields'),
+            content: const Text('Please fill all required fields.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Incident')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Your Name'),
+              decoration: const InputDecoration(
+                labelText: 'Your Name',
+                labelStyle: TextStyle(
+                  fontSize: 16,
+                ),
+                suffix: Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ),
+            TextField(
+              controller: _emailController,
+              readOnly: true, // Set email field to read-only
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                labelStyle: TextStyle(
+                  fontSize: 16,
+                ),
+                suffix: Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                ),
+              ),
             ),
             TextField(
               controller: _detailsController,
-              decoration: const InputDecoration(labelText: 'Incident Details'),
+              maxLines: 3, // Make the incident details a textarea
+              decoration: const InputDecoration(
+                labelText: 'Incident Details',
+                labelStyle: TextStyle(
+                  fontSize: 16,
+                ),
+                suffix: Text(
+                  '*',
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: _uploadImage,
-              child: _isUploading
-                  ? const CircularProgressIndicator()
-                  : const Text('Upload Image'),
+            GestureDetector(
+              onTap: _uploadImage,
+              child: Container(
+                width: double.infinity,
+                height: 200,
+                margin: const EdgeInsets.only(top: 20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(5.0),
+                  color: _image == null ? Colors.white : Colors.transparent,
+                ),
+                child: _image == null
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add, size: 40),
+                            SizedBox(height: 8),
+                            Text('Upload Image'),
+                          ],
+                        ),
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.file(
+                          _image!,
+                          fit: BoxFit
+                              .cover, // Ensures the image fits within the rectangle
+                          width: double.infinity, // Fill the width
+                          height: double.infinity, // Fill the height
+                        ),
+                      ),
+              ),
             ),
+            const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _reportIncident,
+              onPressed:
+                  _reportIncident, // Always allow the button to be pressed
               child: const Text('Report Incident'),
             ),
           ],

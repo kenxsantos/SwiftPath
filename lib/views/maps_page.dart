@@ -689,7 +689,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           fabElevation: 5,
           ringDiameter: 350.0,
           ringWidth: 65.0,
-          fabMargin: const EdgeInsets.only(left: 25),
+          fabMargin: const EdgeInsets.only(left: 25, top: 70),
           ringColor: Colors.red.shade400,
           fabSize: 60.0,
           fabOpenIcon: const Icon(Icons.menu, color: Colors.white),
