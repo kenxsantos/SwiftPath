@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:location/location.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 
 class IncidentReportPage extends StatefulWidget {
   const IncidentReportPage({super.key});
@@ -14,57 +15,59 @@ class IncidentReportPage extends StatefulWidget {
 }
 
 class _IncidentReportPageState extends State<IncidentReportPage> {
-  LocationData? _locationData;
-  String? _address;
+  final LocationSettings locationSettings = const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    distanceFilter: 100,
+  );
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController =
       TextEditingController(); // Email controller
   String? _imageUrl;
-  File? _image; // Store the selected image file
+  File? _image;
   bool _isUploading = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserEmail(); // Fetch email when the page initializes
+    _fetchUserEmail();
   }
 
   // Fetch user email from Firebase Auth
   Future<void> _fetchUserEmail() async {
-    User? user =
-        FirebaseAuth.instance.currentUser; // Get the currently logged-in user
+    User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _emailController.text = user.email ?? "";
-      _nameController.text =
-          user.displayName ?? ""; // Set the email in the text field
+      _nameController.text = user.displayName ?? "";
     }
   }
 
   // Method to get the current location of the user
-  Future<void> _getCurrentLocation() async {
-    final location = Location();
-
-    bool serviceEnabled = await location.serviceEnabled();
+  Future<Position> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) return;
+      return Future.error('Location services are disabled.');
     }
-
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
     }
-
-    _locationData = await location.getLocation();
-    setState(() {});
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+    return await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings);
   }
 
   // Method to upload the image to Firebase Storage
   Future<void> _uploadImage() async {
     final picker = ImagePicker();
-    // Allow user to choose directly from camera or gallery
     final pickedFile = await showDialog<XFile>(
       context: context,
       builder: (BuildContext context) {
@@ -113,29 +116,31 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   // Method to report the incident and store it in Firebase Realtime Database
   Future<void> _reportIncident() async {
     final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-
-    // Get the location if not already fetched
-    if (_locationData == null) {
-      await _getCurrentLocation();
+    Position position;
+    try {
+      position = await _getCurrentLocation();
+    } catch (e) {
+      print(e.toString());
+      return;
     }
+
+    String address =
+        await _getAddressFromLatLng(position.latitude, position.longitude);
 
     if (_nameController.text.isNotEmpty &&
         _emailController.text.isNotEmpty &&
         _detailsController.text.isNotEmpty &&
         _imageUrl != null) {
-      // Push the incident data to the Realtime Database
       await dbRef.child('incident-reports/').push().set({
         'image_url': _imageUrl,
-        'latitude': _locationData!.latitude,
-        'longitude': _locationData!.longitude,
-        'address': _address, // Optionally get address using reverse geocoding
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'address': address,
         'details': _detailsController.text,
         'reporter_name': _nameController.text,
-        'reporter_email': _emailController.text, // Include email in the report
+        'reporter_email': _emailController.text,
         'timestamp': DateTime.now().toIso8601String(),
       });
-
-      // Show a success message
       showDialog(
         context: context,
         builder: (context) {
@@ -153,18 +158,12 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
           );
         },
       );
-
-      // Clear the form after submission
-      _nameController.clear(); // Reset reporter name
-      _detailsController.clear(); // Reset incident details
-      _imageUrl = null; // Reset image URL
-      _image = null; // Reset image file
-      _locationData = null; // Optionally reset location data
-      _address = null; // Optionally reset address
+      _detailsController.clear();
+      _imageUrl = null;
+      _image = null;
 
       setState(() {});
     } else {
-      // Show an alert dialog if required fields are missing
       showDialog(
         context: context,
         builder: (context) {
@@ -182,6 +181,23 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
           );
         },
       );
+    }
+  }
+
+  Future<String> _getAddressFromLatLng(
+      double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
+      Placemark place = placemarks[0];
+
+      // Construct a readable address from the placemark data
+      String address =
+          "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
+      return address;
+    } catch (e) {
+      print(e);
+      return "Address not available";
     }
   }
 
