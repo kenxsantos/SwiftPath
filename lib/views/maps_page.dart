@@ -50,6 +50,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 // !global keys
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
+  final LocationSettings locationSettings = const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    distanceFilter: 100,
+  );
 //! variables & Constants
   String searchAddr = '';
   ValueNotifier<String> _originAddr = ValueNotifier<String>('');
@@ -85,11 +89,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 //! Function to get current user location through GPS
   Future<Position> getcurrentuserlocation() async {
-    await Geolocator.requestPermission().then((value) {
-      FocusScope.of(context).requestFocus(FocusNode());
-    }) //to close the keyboarad if any
-        .onError((error, stackTrace) => null);
-    return await Geolocator.getCurrentPosition();
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+    return await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings);
   }
 
 //! funtion to retreive the autocompleter data from getplaces API of google maps
@@ -822,12 +840,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           });
         },
         shape: const CircleBorder(),
-        backgroundColor:
-            Colors.red.shade400, // Set the background color of the button
+        backgroundColor: Colors.red.shade400,
         child: const Icon(
           Icons.my_location_rounded,
-          color: Colors.white, // Set the icon color
-          size: 25, // Adjust the size of the icon
+          color: Colors.white,
+          size: 25,
         ),
       ),
     );
@@ -836,7 +853,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Function for normal searchbarin stack
   Positioned searchbar() {
     return Positioned(
-      top: 50.0,
+      top: 5.0,
       right: 15.0,
       left: 15.0,
       child: Container(
@@ -889,7 +906,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //!Function for autocomplete searchbar in stack
   Positioned autocompletesearchbar() {
     return Positioned(
-      top: 50.0,
+      top: 5.0,
       right: 15.0,
       left: 15.0,
       child: Column(
@@ -968,7 +985,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showAutoCompleteList() {
     return noreslt == false && _searchautocompleteAddr.value.trim().length >= 2
         ? Positioned(
-            top: 120,
+            top: 70,
             right: 15,
             left: 15,
             child: Container(
@@ -1050,7 +1067,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 120,
+            top: 70,
             right: 15,
             left: 15,
             child: Container(
@@ -1101,7 +1118,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned getDirectionAndOriginToDestinationNavigate() {
     return Positioned(
       height: MediaQuery.of(context).size.height * 1,
-      top: 40.0,
+      top: 10.0,
       left: 10.0,
       right: 10.0,
       child: SingleChildScrollView(
@@ -1327,7 +1344,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showOriginAutoCompleteListUponNavigation() {
     return originnoreslt == false && _originAddr.value.trim().length >= 2
         ? Positioned(
-            top: 180,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1402,7 +1419,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 180,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1504,7 +1521,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return destinationnorelt == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
-            top: 180,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1589,9 +1606,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 180,
-            right: 20,
-            left: 20,
+            top: 150,
+            right: 10,
+            left: 10,
             child: Container(
               height: 200.0,
               decoration: BoxDecoration(
