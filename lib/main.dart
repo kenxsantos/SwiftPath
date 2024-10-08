@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swiftpath/pages/edit_profile_page.dart';
+import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
+import 'package:swiftpath/pages/incident_report.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:swiftpath/pages/landing_page.dart';
@@ -51,6 +53,11 @@ class MyApp extends StatelessWidget {
         '/report-history': (context) => const ReportHistoryPage(),
         '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
+        '/incident-report': (context) => const IncidentReportPage(),
+        '/nearest-facility': (context) => const NearestFacility(
+              latitude: 40.712776, // Replace with dynamic latitude
+              longitude: -74.005974, // Replace with dynamic longitude
+            ),
       },
     );
   }
