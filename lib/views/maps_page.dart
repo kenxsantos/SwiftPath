@@ -15,6 +15,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/auto_complete_result.dart';
@@ -32,9 +33,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Debounce for smooth ui upon searching
   Timer? _debounce;
 //! Text editing controllers
+  TextEditingController _searcheditingcontroller = TextEditingController();
   TextEditingController _autocompletesearcheditingcontroller =
       TextEditingController();
-  TextEditingController _searcheditingcontroller = TextEditingController();
   TextEditingController _originController = TextEditingController();
   TextEditingController _destinationController = TextEditingController();
 //! boolean values for ui
@@ -861,7 +862,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         height: 50.0,
         width: double.infinity,
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(5.0), color: Colors.white),
+          borderRadius: BorderRadius.circular(5.0),
+          color: Colors.white,
+        ),
         child: TextField(
           controller: _searcheditingcontroller,
           keyboardType: TextInputType.streetAddress,
@@ -871,33 +874,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           onEditingComplete: () async {
             FocusScope.of(context).requestFocus(FocusNode());
             GoogleMapController mapController = await _controller.future.then(
-                (value) => searchandNavigate(
-                    value, _searcheditingcontroller.text,
-                    zoom: 14));
+              (value) => searchandNavigate(
+                value,
+                _searcheditingcontroller.text,
+                zoom: 14,
+              ),
+            );
           },
           decoration: InputDecoration(
-              hintText: 'Enter Address',
-              contentPadding: const EdgeInsets.only(left: 15.0, top: 12.0),
-              border: InputBorder.none,
-              suffixIcon: IconButton(
-                  icon: const Icon(
-                    Icons.search,
-                    size: 20,
-                  ),
-                  onPressed: () async {
-                    FocusScope.of(context).requestFocus(FocusNode());
-                    GoogleMapController mapController = await _controller.future
-                        .then((value) => searchandNavigate(
-                            value, _searcheditingcontroller.text,
-                            zoom: 14));
-                  },
-                  iconSize: 20.0)),
-          onChanged: (val) {
-            setState(() {
-              searchAddr = val;
-              developer.log(searchAddr);
-            });
-          },
+            hintText: 'Enter Address',
+            contentPadding: const EdgeInsets.only(left: 15.0, top: 12.0),
+            border: InputBorder.none,
+            suffixIcon: TextToSpeech(
+              textController: _searcheditingcontroller,
+              onSpeechResult: (text) async {
+                GoogleMapController mapController =
+                    await _controller.future.then(
+                  (value) => searchandNavigate(value, text, zoom: 14),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
