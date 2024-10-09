@@ -51,6 +51,9 @@
 	<string>We need your location to show your position.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>We need your location to show your position.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need to access your microphone for speech recognition</string>
+
 
 </dict>
 </plist>
