@@ -17,14 +17,19 @@ import 'package:swiftpath/pages/signup_page.dart';
 import 'package:swiftpath/pages/dashboard_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 SharedPreferences? prefs;
+final String roam_ai_api_key = dotenv.env['ROAM_AI_API_KEY'] ?? '';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await dotenv.load(fileName: ".env");
+  Roam.initialize(publishKey: roam_ai_api_key);
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

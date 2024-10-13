@@ -15,13 +15,12 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:swiftpath/pages/incident_report.dart';
-import 'package:swiftpath/pages/settings_page.dart';
 import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/auto_complete_result.dart';
 import '../services/map_services.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -50,6 +49,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool cardTapped = false;
   bool pressedNear = false;
   bool getDirections = false;
+  String? myLocation;
   final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 // !global keys
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
@@ -336,7 +336,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     },
                   )),
               //!stack if asked normal seachnbar
-              //thisway also correct
+              if (showsearchbar == true) searchbar(), //thisway also correct
               //!stack if asked autocomplet seachnbar
               showautocompletesearchbar
                   ? autocompletesearchbar()
@@ -710,37 +710,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           fabElevation: 5,
           ringDiameter: 350.0,
           ringWidth: 65.0,
-          fabMargin: const EdgeInsets.only(left: 25),
+          fabMargin: const EdgeInsets.only(left: 25, top: 70),
           ringColor: Colors.red.shade400,
           fabSize: 60.0,
           fabOpenIcon: const Icon(Icons.menu, color: Colors.white),
           fabCloseIcon: const Icon(Icons.close, color: Colors.white),
           children: [
             IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.white,
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const IncidentReportPage()),
-                );
-              },
-              icon: const Icon(
-                Icons.report,
-                color: Colors.white,
-              ),
-            ),
+                onPressed: () {
+                  setState(() {
+                    showsearchbar = true;
+                    showautocompletesearchbar = false;
+                    _searcheditingcontroller.clear();
+                    _autocompletesearcheditingcontroller.clear();
+                    _originController.clear();
+                    _destinationController.clear();
+                    radiusSlider = false;
+                    pressedNear = false;
+                    cardTapped = false;
+                    getDirections = false;
+                    _searchautocompleteAddr.value = '';
+                    _originAddr.value = '';
+                    _destinationAddr.value = '';
+                  });
+                  if (_polylines.isNotEmpty) {
+                    _originController.text = '';
+                    _destinationController.text = '';
+                    _autocompletesearcheditingcontroller.text = '';
+                    _searcheditingcontroller.text = '';
+                    _markers = {};
+                    _polylines = {};
+                  }
+                  if (fabKey.currentState!.isOpen) {
+                    fabKey.currentState!.close();
+                  }
+                },
+                icon: const Icon(Icons.search, color: Colors.white)),
             IconButton(
                 onPressed: () {
                   setState(() {
@@ -821,21 +826,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       right: 5,
       child: FloatingActionButton(
         onPressed: () async {
-          GoogleMapController controller = await _controller.future;
           developer.log('pressed');
-          getcurrentuserlocation().then((value) async {
-            await controller.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: LatLng(value.latitude, value.longitude),
-                  zoom: 14.2,
-                ),
-              ),
+          // Step 1: Get the current location using Roam API
+          try {
+            await Roam.getCurrentLocation(
+              accuracy: 100,
+              callBack: ({location}) async {
+                double latitude = location
+                    .latitude; // Assuming location is of the correct type
+                double longitude = location?.longitude;
+
+                // Step 2: Call Roam.ai Moving Geofence API
+                final response = await createGeofence(latitude, longitude);
+
+                if (response.statusCode == 201) {
+                  // Step 3: Handle successful geofence creation
+                  developer.log('Geofence added successfully');
+                  setState(() {
+                    myLocation = "Geofence created at: $latitude, $longitude";
+                  });
+                } else {
+                  // Step 4: Handle any errors
+                  developer.log('Failed to create geofence: ${response.body}');
+                }
+              },
             );
-            showautocompletesearchbar = false;
-            _setMarker(LatLng(value.latitude, value.longitude),
-                info: "My Current Location");
-          });
+          } catch (e) {
+            print('Error fetching location: $e');
+          }
         },
         shape: const CircleBorder(),
         backgroundColor: Colors.red.shade400,
@@ -848,12 +866,96 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  // Helper function to create a geofence using Roam API
+  Future<http.Response> createGeofence(
+      double latitude, double longitude) async {
+    const String apiKey =
+        '856a84e65e994efdba27fa976ea618b8'; // Replace with your Roam API key
+    final String url = 'https://api.roam.ai/v1/api/moving-geofence/';
+
+    // Request body for creating the geofence
+    final body = jsonEncode({
+      "geometry_type": "circle",
+      "geometry_radius":
+          500, // Define your desired radius here (500 meters in this case)
+      "is_enabled": true,
+      "only_once": true,
+      "users": [
+        "5f520949e3872b0341bcf3e7",
+        "5f520955e3872b0341bcf3e8"
+      ], // Adjust users as needed
+      "current_location": {
+        "latitude": latitude,
+        "longitude": longitude,
+      }
+    });
+
+    // Send the POST request to Roam API
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Api-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: body,
+    );
+
+    return response;
+  }
+
 //! Function for normal searchbarin stack
+  Positioned searchbar() {
+    return Positioned(
+      top: 5.0,
+      right: 15.0,
+      left: 15.0,
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        height: 50.0,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5.0),
+          color: Colors.white,
+        ),
+        child: TextField(
+          controller: _searcheditingcontroller,
+          keyboardType: TextInputType.streetAddress,
+          showCursor: true,
+          autocorrect: true,
+          autofocus: false,
+          onEditingComplete: () async {
+            FocusScope.of(context).requestFocus(FocusNode());
+            GoogleMapController mapController = await _controller.future.then(
+              (value) => searchandNavigate(
+                value,
+                _searcheditingcontroller.text,
+                zoom: 14,
+              ),
+            );
+          },
+          decoration: InputDecoration(
+            hintText: 'Enter Address',
+            contentPadding: const EdgeInsets.only(left: 15.0, top: 12.0),
+            border: InputBorder.none,
+            suffixIcon: TextToSpeech(
+              textController: _searcheditingcontroller,
+              onSpeechResult: (text) async {
+                GoogleMapController mapController =
+                    await _controller.future.then(
+                  (value) => searchandNavigate(value, text, zoom: 14),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
 //!Function for autocomplete searchbar in stack
   Positioned autocompletesearchbar() {
     return Positioned(
-      top: 40.0,
+      top: 5.0,
       right: 15.0,
       left: 15.0,
       child: Column(
@@ -869,7 +971,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 valueListenable: _searchautocompleteAddr,
                 builder: (BuildContext context, dynamic value, Widget? _) {
                   return TextField(
-                    controller: _searcheditingcontroller,
+                    controller: _autocompletesearcheditingcontroller,
                     keyboardType: TextInputType.streetAddress,
                     autofocus: true, //for keyboard focus upon the start
                     textInputAction: TextInputAction
@@ -882,20 +984,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       _searchautocompleteAddr.value = '';
                     },
                     decoration: InputDecoration(
-                      hintText: 'Search Auto Complete..',
-                      border: InputBorder.none,
-                      contentPadding:
-                          const EdgeInsets.only(left: 15.0, top: 12.0),
-                      suffixIcon: TextToSpeech(
-                        textController: _searcheditingcontroller,
-                        onSpeechResult: (text) async {
-                          GoogleMapController mapController =
-                              await _controller.future.then(
-                            (value) => searchandNavigate(value, text, zoom: 14),
-                          );
-                        },
-                      ),
-                    ),
+                        hintText: 'Search Auto Complete..',
+                        border: InputBorder.none,
+                        contentPadding:
+                            const EdgeInsets.only(left: 15.0, top: 12.0),
+                        suffixIcon: IconButton(
+                            icon: value.trim().isNotEmpty
+                                ? const Icon(
+                                    Icons.search,
+                                    size: 20,
+                                  )
+                                : const Icon(
+                                    Icons.close,
+                                    size: 20,
+                                  ),
+                            onPressed: () async {
+                              value.trim().isNotEmpty
+                                  ? searchandNavigate(
+                                      await _controller.future, value,
+                                      zoom: 14)
+                                  : showautocompletesearchbar = false;
+                              FocusManager.instance.primaryFocus
+                                  ?.unfocus(); //to hide keyboard upon pressing done
+                              _searchautocompleteAddr.value = '';
+                              setState(() {
+                                //done for showautocompletesearchbar = false above; not for any of the function used inside valuelistablebuilder
+                              });
+                            },
+                            iconSize: 30.0)),
                     onChanged: (val) {
                       //!<<<<debounce
                       if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -918,7 +1034,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showAutoCompleteList() {
     return noreslt == false && _searchautocompleteAddr.value.trim().length >= 2
         ? Positioned(
-            top: 110,
+            top: 70,
             right: 15,
             left: 15,
             child: Container(
@@ -1000,7 +1116,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 110,
+            top: 70,
             right: 15,
             left: 15,
             child: Container(
@@ -1051,7 +1167,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned getDirectionAndOriginToDestinationNavigate() {
     return Positioned(
       height: MediaQuery.of(context).size.height * 1,
-      top: 30.0,
+      top: 10.0,
       left: 10.0,
       right: 10.0,
       child: SingleChildScrollView(
@@ -1277,7 +1393,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showOriginAutoCompleteListUponNavigation() {
     return originnoreslt == false && _originAddr.value.trim().length >= 2
         ? Positioned(
-            top: 170,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1352,7 +1468,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 170,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1454,7 +1570,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return destinationnorelt == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
-            top: 170,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
@@ -1539,7 +1655,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 170,
+            top: 150,
             right: 10,
             left: 10,
             child: Container(
