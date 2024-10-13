@@ -15,6 +15,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/pages/incident_report.dart';
+import 'package:swiftpath/pages/settings_page.dart';
 import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -334,7 +336,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     },
                   )),
               //!stack if asked normal seachnbar
-              if (showsearchbar == true) searchbar(), //thisway also correct
+              //thisway also correct
               //!stack if asked autocomplet seachnbar
               showautocompletesearchbar
                   ? autocompletesearchbar()
@@ -708,42 +710,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           fabElevation: 5,
           ringDiameter: 350.0,
           ringWidth: 65.0,
-          fabMargin: const EdgeInsets.only(left: 25, top: 70),
+          fabMargin: const EdgeInsets.only(left: 25),
           ringColor: Colors.red.shade400,
           fabSize: 60.0,
           fabOpenIcon: const Icon(Icons.menu, color: Colors.white),
           fabCloseIcon: const Icon(Icons.close, color: Colors.white),
           children: [
             IconButton(
-                onPressed: () {
-                  setState(() {
-                    showsearchbar = true;
-                    showautocompletesearchbar = false;
-                    _searcheditingcontroller.clear();
-                    _autocompletesearcheditingcontroller.clear();
-                    _originController.clear();
-                    _destinationController.clear();
-                    radiusSlider = false;
-                    pressedNear = false;
-                    cardTapped = false;
-                    getDirections = false;
-                    _searchautocompleteAddr.value = '';
-                    _originAddr.value = '';
-                    _destinationAddr.value = '';
-                  });
-                  if (_polylines.isNotEmpty) {
-                    _originController.text = '';
-                    _destinationController.text = '';
-                    _autocompletesearcheditingcontroller.text = '';
-                    _searcheditingcontroller.text = '';
-                    _markers = {};
-                    _polylines = {};
-                  }
-                  if (fabKey.currentState!.isOpen) {
-                    fabKey.currentState!.close();
-                  }
-                },
-                icon: const Icon(Icons.search, color: Colors.white)),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                );
+              },
+              icon: const Icon(
+                Icons.settings,
+                color: Colors.white,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const IncidentReportPage()),
+                );
+              },
+              icon: const Icon(
+                Icons.report,
+                color: Colors.white,
+              ),
+            ),
             IconButton(
                 onPressed: () {
                   setState(() {
@@ -852,58 +849,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! Function for normal searchbarin stack
-  Positioned searchbar() {
-    return Positioned(
-      top: 5.0,
-      right: 15.0,
-      left: 15.0,
-      child: Container(
-        margin: const EdgeInsets.only(top: 8),
-        height: 50.0,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(5.0),
-          color: Colors.white,
-        ),
-        child: TextField(
-          controller: _searcheditingcontroller,
-          keyboardType: TextInputType.streetAddress,
-          showCursor: true,
-          autocorrect: true,
-          autofocus: false,
-          onEditingComplete: () async {
-            FocusScope.of(context).requestFocus(FocusNode());
-            GoogleMapController mapController = await _controller.future.then(
-              (value) => searchandNavigate(
-                value,
-                _searcheditingcontroller.text,
-                zoom: 14,
-              ),
-            );
-          },
-          decoration: InputDecoration(
-            hintText: 'Enter Address',
-            contentPadding: const EdgeInsets.only(left: 15.0, top: 12.0),
-            border: InputBorder.none,
-            suffixIcon: TextToSpeech(
-              textController: _searcheditingcontroller,
-              onSpeechResult: (text) async {
-                GoogleMapController mapController =
-                    await _controller.future.then(
-                  (value) => searchandNavigate(value, text, zoom: 14),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
 //!Function for autocomplete searchbar in stack
   Positioned autocompletesearchbar() {
     return Positioned(
-      top: 5.0,
+      top: 40.0,
       right: 15.0,
       left: 15.0,
       child: Column(
@@ -919,7 +869,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 valueListenable: _searchautocompleteAddr,
                 builder: (BuildContext context, dynamic value, Widget? _) {
                   return TextField(
-                    controller: _autocompletesearcheditingcontroller,
+                    controller: _searcheditingcontroller,
                     keyboardType: TextInputType.streetAddress,
                     autofocus: true, //for keyboard focus upon the start
                     textInputAction: TextInputAction
@@ -932,34 +882,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       _searchautocompleteAddr.value = '';
                     },
                     decoration: InputDecoration(
-                        hintText: 'Search Auto Complete..',
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.only(left: 15.0, top: 12.0),
-                        suffixIcon: IconButton(
-                            icon: value.trim().isNotEmpty
-                                ? const Icon(
-                                    Icons.search,
-                                    size: 20,
-                                  )
-                                : const Icon(
-                                    Icons.close,
-                                    size: 20,
-                                  ),
-                            onPressed: () async {
-                              value.trim().isNotEmpty
-                                  ? searchandNavigate(
-                                      await _controller.future, value,
-                                      zoom: 14)
-                                  : showautocompletesearchbar = false;
-                              FocusManager.instance.primaryFocus
-                                  ?.unfocus(); //to hide keyboard upon pressing done
-                              _searchautocompleteAddr.value = '';
-                              setState(() {
-                                //done for showautocompletesearchbar = false above; not for any of the function used inside valuelistablebuilder
-                              });
-                            },
-                            iconSize: 30.0)),
+                      hintText: 'Search Auto Complete..',
+                      border: InputBorder.none,
+                      contentPadding:
+                          const EdgeInsets.only(left: 15.0, top: 12.0),
+                      suffixIcon: TextToSpeech(
+                        textController: _searcheditingcontroller,
+                        onSpeechResult: (text) async {
+                          GoogleMapController mapController =
+                              await _controller.future.then(
+                            (value) => searchandNavigate(value, text, zoom: 14),
+                          );
+                        },
+                      ),
+                    ),
                     onChanged: (val) {
                       //!<<<<debounce
                       if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -982,7 +918,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showAutoCompleteList() {
     return noreslt == false && _searchautocompleteAddr.value.trim().length >= 2
         ? Positioned(
-            top: 70,
+            top: 110,
             right: 15,
             left: 15,
             child: Container(
@@ -1064,7 +1000,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 70,
+            top: 110,
             right: 15,
             left: 15,
             child: Container(
@@ -1115,7 +1051,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned getDirectionAndOriginToDestinationNavigate() {
     return Positioned(
       height: MediaQuery.of(context).size.height * 1,
-      top: 10.0,
+      top: 30.0,
       left: 10.0,
       right: 10.0,
       child: SingleChildScrollView(
@@ -1341,7 +1277,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Positioned showOriginAutoCompleteListUponNavigation() {
     return originnoreslt == false && _originAddr.value.trim().length >= 2
         ? Positioned(
-            top: 150,
+            top: 170,
             right: 10,
             left: 10,
             child: Container(
@@ -1416,7 +1352,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 150,
+            top: 170,
             right: 10,
             left: 10,
             child: Container(
@@ -1518,7 +1454,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return destinationnorelt == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
-            top: 150,
+            top: 170,
             right: 10,
             left: 10,
             child: Container(
@@ -1603,7 +1539,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           )
         : Positioned(
-            top: 150,
+            top: 170,
             right: 10,
             left: 10,
             child: Container(

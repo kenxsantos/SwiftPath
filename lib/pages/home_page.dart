@@ -24,7 +24,7 @@ class HomePage extends StatelessWidget {
         idToken: GoogleAuth.idToken,
       );
       await _auth.signInWithCredential(credential);
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      Navigator.pushReplacementNamed(context, '/splash-screen');
     } catch (e) {
       print('Sign in failed: $e');
       _showErrorDialog(context, e.toString());
@@ -66,7 +66,7 @@ class HomePage extends StatelessWidget {
         }
         if (snapshot.data == true) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
+            Navigator.pushReplacementNamed(context, '/splash-screen');
           });
         }
         return Scaffold(
