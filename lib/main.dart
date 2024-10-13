@@ -5,7 +5,6 @@ import 'package:swiftpath/pages/edit_profile_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
-import 'package:swiftpath/views/googlemap_page.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 import 'package:swiftpath/pages/incident_report.dart';
@@ -55,7 +54,6 @@ class MyApp extends StatelessWidget {
         '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
-        '/googlemap-screen': (context) => const GoogleMapScreen(),
         '/nearest-facility': (context) => const NearestFacility(
               latitude: 40.712776, // Replace with dynamic latitude
               longitude: -74.005974, // Replace with dynamic longitude

@@ -869,7 +869,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 valueListenable: _searchautocompleteAddr,
                 builder: (BuildContext context, dynamic value, Widget? _) {
                   return TextField(
-                    controller: _autocompletesearcheditingcontroller,
+                    controller: _searcheditingcontroller,
                     keyboardType: TextInputType.streetAddress,
                     autofocus: true, //for keyboard focus upon the start
                     textInputAction: TextInputAction
