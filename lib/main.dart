@@ -5,6 +5,7 @@ import 'package:swiftpath/pages/edit_profile_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
+import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 import 'package:swiftpath/pages/incident_report.dart';
@@ -28,8 +29,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  Roam.initialize(publishKey: roam_ai_api_key);
-
+  final String roam_ai_api_key = dotenv.env['ROAM_AI_API_KEY'] ?? '';
+  if (roam_ai_api_key.isNotEmpty) {
+    Roam.initialize(publishKey: roam_ai_api_key);
+    print('Roam SDK initialized');
+  } else {
+    print('Roam SDK initialization failed: API key is missing');
+  }
+  // Roam.initialize(publishKey: roam_ai_api_key);
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -59,6 +66,7 @@ class MyApp extends StatelessWidget {
         '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
+        '/emergency-vehicles': (context) => const EmergencyVehicles(),
         '/nearest-facility': (context) => const NearestFacility(
               latitude: 40.712776, // Replace with dynamic latitude
               longitude: -74.005974, // Replace with dynamic longitude

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:ui' as ui;
 import 'package:fab_circular_menu_plus/fab_circular_menu_plus.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,12 +16,14 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/auto_complete_result.dart';
 import '../services/map_services.dart';
 import 'package:roam_flutter/roam_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -50,6 +53,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool pressedNear = false;
   bool getDirections = false;
   String? myLocation;
+
   final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 // !global keys
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
@@ -826,33 +830,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       right: 5,
       child: FloatingActionButton(
         onPressed: () async {
-          developer.log('pressed');
-          // Step 1: Get the current location using Roam API
-          try {
-            await Roam.getCurrentLocation(
-              accuracy: 100,
-              callBack: ({location}) async {
-                double latitude = location
-                    .latitude; // Assuming location is of the correct type
-                double longitude = location?.longitude;
+          // Request location permission
+          var status = await Permission.location.request();
+          User? user = FirebaseAuth.instance.currentUser;
+          final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+          String? userEmail = user?.email;
 
-                // Step 2: Call Roam.ai Moving Geofence API
-                final response = await createGeofence(latitude, longitude);
+          // Request always location permission
+          Permission.locationAlways.request();
 
-                if (response.statusCode == 201) {
-                  // Step 3: Handle successful geofence creation
-                  developer.log('Geofence added successfully');
-                  setState(() {
-                    myLocation = "Geofence created at: $latitude, $longitude";
-                  });
-                } else {
-                  // Step 4: Handle any errors
-                  developer.log('Failed to create geofence: ${response.body}');
-                }
+          if (status.isGranted) {
+            // If permission granted, create user and start location tracking
+            print('Location permission granted');
+
+            Roam.createUser(
+              description: userEmail!,
+              callBack: ({user}) async {
+                print('User created: $user');
+
+                // Store user data in Firebase
+                await dbRef.child('user-locations/').push().set({
+                  'email': userEmail,
+                  'description': user,
+                  "geometry_type": "circle",
+                  "geometry_radius": 500,
+                  "is_enabled": true,
+                  "only_once": true,
+                  'timestamp': DateTime.now().toIso8601String(),
+                });
+
+                // Set up Moving Geofence
+                await createMovingGeofence(userEmail);
               },
             );
-          } catch (e) {
-            print('Error fetching location: $e');
+
+            Roam.startTracking(trackingMode: 'active');
+          } else {
+            print('Location permission denied');
           }
         },
         shape: const CircleBorder(),
@@ -866,41 +880,38 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  // Helper function to create a geofence using Roam API
-  Future<http.Response> createGeofence(
-      double latitude, double longitude) async {
+  Future<void> createMovingGeofence(String userEmail) async {
+    const String url = 'https://api.roam.ai/v1/api/moving-geofence/';
     const String apiKey =
-        '856a84e65e994efdba27fa976ea618b8'; // Replace with your Roam API key
-    final String url = 'https://api.roam.ai/v1/api/moving-geofence/';
+        '10f984325931446ea8e54d6a76c44037'; // Replace with your actual API key
 
-    // Request body for creating the geofence
-    final body = jsonEncode({
+    // Sample geofence data; modify according to your requirements
+    final Map<String, dynamic> geofenceData = {
       "geometry_type": "circle",
-      "geometry_radius":
-          500, // Define your desired radius here (500 meters in this case)
+      "geometry_radius": 500,
       "is_enabled": true,
-      "only_once": true,
-      "users": [
-        "5f520949e3872b0341bcf3e7",
-        "5f520955e3872b0341bcf3e8"
-      ], // Adjust users as needed
-      "current_location": {
-        "latitude": latitude,
-        "longitude": longitude,
+      "only_once": true
+      // Add any other parameters required by the API
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Api-key': apiKey,
+        },
+        body: jsonEncode(geofenceData),
+      );
+
+      if (response.statusCode == 200) {
+        print('Moving geofence created successfully: ${response.body}');
+      } else {
+        print('Failed to create moving geofence: ${response.statusCode}');
       }
-    });
-
-    // Send the POST request to Roam API
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Api-Key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
-
-    return response;
+    } catch (e) {
+      print('Error creating moving geofence: $e');
+    }
   }
 
 //! Function for normal searchbarin stack
