@@ -93,8 +93,40 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () {
-                          print('Take Action button pressed');
+                        onPressed: () async {
+                          final DatabaseReference dbRef =
+                              FirebaseDatabase.instance.ref();
+                          try {
+                            int incidentKey = report['incident_key'];
+                            DataSnapshot snapshot =
+                                await dbRef.child('incident-reports').get();
+                            if (snapshot.exists) {
+                              Map<dynamic, dynamic> reports =
+                                  snapshot.value as Map<dynamic, dynamic>;
+                              reports.forEach((key, reportData) async {
+                                if (reportData['incident_key'] == incidentKey) {
+                                  await dbRef
+                                      .child('incident-reports/$key')
+                                      .update({
+                                    'status': 'tracking',
+                                  });
+
+                                  print(
+                                      'Status updated to Done for incident_key: $incidentKey');
+                                  // Navigator.pushReplacement(
+                                  //   context,
+                                  //   MaterialPageRoute(
+                                  //       builder: (BuildContext context) =>
+                                  //           super.widget),
+                                  // );
+                                }
+                              });
+                            } else {
+                              print('No incident reports found.');
+                            }
+                          } catch (e) {
+                            print('Failed to update status: $e');
+                          }
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
@@ -107,7 +139,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                               color: Colors.white), // Set the text color
                         ),
                       ),
-                    ),
+                    )
                   ],
                 )),
               ),
@@ -174,15 +206,10 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                                         borderRadius:
                                             BorderRadius.circular(100),
                                       ),
-                                      child: const Text(
-                                        'Pending', // Dynamic status
-                                        style: TextStyle(
-                                          color:
-                                              Colors.white, // Badge text color
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                      child: Text('${report['status']}',
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.white)),
                                     ),
                                   ),
                                 ],
