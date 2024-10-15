@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthValidation {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -83,10 +87,54 @@ class AuthValidation {
 
       // Store user details in Realtime Database
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-      await dbRef.child('users/${userCredential.user?.uid}').set({
-        'email': email,
-        'password': password, // Store the hashed password
-      });
+
+      final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
+      // Replace with your Roam.ai API Key
+      var response = await http.post(
+        Uri.parse('https://api.roam.ai/v1/api/user/'),
+        headers: {
+          'Api-Key': roamAiApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "app_type": 1,
+          "device_token": "token",
+          "description": "Device description",
+          "metadata": {}
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> responseData =
+            jsonDecode(response.body)['data'];
+
+        final Map<String, dynamic> createUserAPI = {
+          'email': email,
+          'password': password,
+          "user_id": responseData["user_id"],
+          "app_id": responseData["app_id"],
+          "geofence_events": responseData["geofence_events"],
+          "location_events": responseData["location_events"],
+          "trips_events": responseData["trips_events"],
+          "nearby_events": responseData["nearby_events"],
+          "location_listener": responseData["location_listener"],
+          "event_listener": responseData["event_listener"],
+          "metadata": {},
+          "sdk_version": responseData["sdk_version"],
+          "project_id": responseData["project_id"],
+          "account_id": responseData["account_id"],
+        };
+        await dbRef
+            .child('users/${userCredential.user?.uid}')
+            .set(createUserAPI);
+
+        print('Roam.ai user created successfully.');
+        onSuccess();
+      } else {
+        print('Failed to create Roam.ai user: ${response.body}');
+        onFailure(); // Call the failure function
+      }
+
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
