@@ -164,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                                 setState(() {
                                   _saving = false;
                                   Navigator.pushReplacementNamed(
-                                      context, '/dashboard');
+                                      context, '/splash-screen');
                                 });
                               },
                               onFailure: () {

@@ -30,12 +30,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      List<String> nameParts = user.displayName!.split(' ');
-
-      String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-      String lastName =
-          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
       _emailController.text = user.email ?? "";
       _fullNameController.text = user.displayName ?? "";
     }
