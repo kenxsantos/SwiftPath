@@ -7,17 +7,17 @@ class TextToSpeech extends StatefulWidget {
   final Function(String) onSpeechResult; // Pass search function as callback
 
   const TextToSpeech({
-    Key? key,
+    super.key,
     required this.textController,
     required this.onSpeechResult,
-  }) : super(key: key);
+  });
 
   @override
   _TextToSpeechState createState() => _TextToSpeechState();
 }
 
 class _TextToSpeechState extends State<TextToSpeech> {
-  SpeechToText _speechToText = SpeechToText();
+  final SpeechToText _speechToText = SpeechToText();
   bool _speechEnabled = false;
 
   @override

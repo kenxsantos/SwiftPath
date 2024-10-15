@@ -49,6 +49,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
