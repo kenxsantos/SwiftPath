@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -12,33 +17,121 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
+  List<Map<String, dynamic>> _geofences = [];
+  late Position position;
+
+  final LocationSettings locationSettings = const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    distanceFilter: 100,
+  );
 
   @override
   void initState() {
     super.initState();
-    _fetchReports();
+
+    _getUserLocationAndFetchReports();
   }
 
-  // Fetch user's reports from Firebase
-  Future<void> _fetchReports() async {
-    final DataSnapshot snapshot = await _dbRef.child('incident-reports').get();
-    List<Map<String, dynamic>> tempReports = [];
+  Future<void> _getUserLocationAndFetchReports() async {
+    // Get the current position of the user
+    position = await _determinePosition();
 
-    if (snapshot.exists) {
-      Map<String, dynamic> reports =
-          Map<String, dynamic>.from(snapshot.value as Map);
-      reports.forEach((key, value) {
-        tempReports.add(Map<String, dynamic>.from(value));
-      });
+    // Fetch reports based on the user's current location
+    _fetchReports(
+        position.longitude, position.latitude, 10); // Radius in kilometers
+  }
+
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
     }
 
-    setState(() {
-      _reports = tempReports;
-      _loading = false;
-    });
+    // Check for location permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+    return await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings);
   }
 
-  // Method to show the modal dialog with all details
+  // Fetch user's reports from Firebase and Roam.ai
+  Future<void> _fetchReports(
+      double latitude, double longitude, double radius) async {
+    setState(() {
+      _loading = true;
+    });
+
+    final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
+    final int radiusInMeters = (radius * 1000).toInt();
+    var response = await http.get(
+      Uri.parse(
+          'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
+      headers: {
+        'Api-key': roamAiApiKey,
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<Map<String, dynamic>> roamGeofences = [];
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final List<dynamic> geofences =
+          data['data']['geofences']; // Get the list of geofences
+
+      if (geofences.isNotEmpty) {
+        roamGeofences = geofences.map((geofence) {
+          return {
+            'id': geofence['id'],
+          };
+        }).toList();
+      }
+
+      // Step 3: Fetch all incident reports from Firebase Realtime Database
+      final DataSnapshot snapshot =
+          await _dbRef.child('incident-reports').get();
+      List<Map<String, dynamic>> matchingReports = [];
+
+      if (snapshot.exists) {
+        Map<String, dynamic> firebaseGeofences =
+            Map<String, dynamic>.from(snapshot.value as Map);
+
+        firebaseGeofences.forEach((key, value) {
+          final firebaseGeofence = Map<String, dynamic>.from(value);
+          final geofenceId = firebaseGeofence['geofence_id'];
+          if (geofenceId != null &&
+              roamGeofences.any((geofence) => geofence['id'] == geofenceId)) {
+            matchingReports.add(firebaseGeofence);
+          }
+        });
+      }
+      setState(() {
+        _reports = matchingReports;
+        _loading = false;
+      });
+      print(
+          'Matching incident reports fetched successfully: ${_reports.length} reports found.');
+    } else {
+      print('Failed to fetch geofences from Roam.ai: ${response.body}');
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
   void _showReportDetailsModal(
       BuildContext context, Map<String, dynamic> report) {
     showDialog(
@@ -151,6 +244,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -159,7 +253,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(),
-            ) // Show loader while fetching data
+            )
           : _reports.isEmpty
               ? const Center(child: Text('No reports found.'))
               : ListView.builder(
