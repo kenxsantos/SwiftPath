@@ -144,87 +144,14 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
     int incidentKey =
         int.parse('$key1$key2'); // Combining both into a 10-digit key
 
-    if (_nameController.text.isNotEmpty &&
-        _emailController.text.isNotEmpty &&
-        _detailsController.text.isNotEmpty &&
-        _imageUrl != null) {
-      await dbRef.child('incident-reports/').push().set({
-        'incident_key': incidentKey,
-        'image_url': _imageUrl,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'address': address,
-        'details': _detailsController.text,
-        'reporter_name': _nameController.text,
-        'reporter_email': _emailController.text,
-        'status': 'Pending',
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-
-      // await _createGeofence(position.latitude, position.longitude);
-
-      setState(() {
-        _isLoading = false; // Stop loading when done
-      });
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Success'),
-            content: const Text('Incident reported successfully!'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-
-      _detailsController.clear();
-      _imageUrl = null;
-      _image = null;
-      setState(() {});
-    } else {
-      setState(() {
-        _isLoading = false; // Stop loading if required fields are missing
-      });
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Required Fields'),
-            content: const Text('Please fill all required fields.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
-
-  // Function to create a geofence using Roam.ai
-  Future<void> _createGeofence(double latitude, double longitude) async {
     const String apiUrl = 'https://api.roam.ai/v1/api/geofence/';
-    final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final DatabaseReference dbRef =
-        FirebaseDatabase.instance.ref(); // Firebase reference
+    final String roamAiApiKey =
+        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Firebase reference
 
     final Map<String, dynamic> geofenceData = {
       "coordinates": [
-        longitude,
-        latitude
+        position.longitude,
+        position.latitude
       ], // Roam expects coordinates in [lon, lat] format
       "geometry_radius": 500, // Define your radius in meters
       "description": "Incident Location",
@@ -267,16 +194,74 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
           "updated_at": responseData["updated_at"],
         };
 
-        // Store the geofence data in Firebase
-        await dbRef.child('geofences').push().set(firebaseGeofenceData);
+        // Check if required fields are filled
+        if (_nameController.text.isNotEmpty &&
+            _emailController.text.isNotEmpty &&
+            _detailsController.text.isNotEmpty &&
+            _imageUrl != null) {
+          // Push incident report data to Firebase
+          await dbRef.child('incident-reports/').push().set({
+            'geofence_id': responseData["geofence_id"],
+            'incident_key': incidentKey,
+            'image_url': _imageUrl,
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'address': address,
+            'details': _detailsController.text,
+            'reporter_name': _nameController.text,
+            'reporter_email': _emailController.text,
+            'status': 'Pending',
+            'timestamp': DateTime.now().toIso8601String(),
+          });
 
-        print('Geofence created and stored in Firebase successfully!');
+          // Store the geofence data in Firebase
+          await dbRef.child('geofences').push().set(firebaseGeofenceData);
+
+          print('Geofence created and stored in Firebase successfully!');
+
+          // Show success dialog
+          _showDialog('Success', 'Incident reported successfully!');
+
+          // Clear form fields
+          _detailsController.clear();
+          _imageUrl = null;
+          _image = null;
+        } else {
+          // Required fields are missing
+          _showDialog('Required Fields', 'Please fill all required fields.');
+        }
       } else {
         print('Failed to create geofence: ${response.body}');
+        _showDialog('Error', 'Failed to create geofence. Please try again.');
       }
     } catch (e) {
       print('Error creating geofence: $e');
+      _showDialog('Error', 'An error occurred while creating the geofence.');
+    } finally {
+      setState(() {
+        _isLoading = false; // Stop loading when done
+      });
     }
+  }
+
+  void _showDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<String> _getAddressFromLatLng(
