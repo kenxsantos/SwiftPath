@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+// import 'package:location/location.dart';
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -76,7 +77,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final int radiusInMeters = (radius * 1000).toInt();
+    final int radiusInMeters = (radius * 100).toInt();
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -186,40 +187,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () async {
-                          final DatabaseReference dbRef =
-                              FirebaseDatabase.instance.ref();
-                          try {
-                            int incidentKey = report['incident_key'];
-                            DataSnapshot snapshot =
-                                await dbRef.child('incident-reports').get();
-                            if (snapshot.exists) {
-                              Map<dynamic, dynamic> reports =
-                                  snapshot.value as Map<dynamic, dynamic>;
-                              reports.forEach((key, reportData) async {
-                                if (reportData['incident_key'] == incidentKey) {
-                                  await dbRef
-                                      .child('incident-reports/$key')
-                                      .update({
-                                    'status': 'tracking',
-                                  });
-
-                                  print(
-                                      'Status updated to Done for incident_key: $incidentKey');
-                                  // Navigator.pushReplacement(
-                                  //   context,
-                                  //   MaterialPageRoute(
-                                  //       builder: (BuildContext context) =>
-                                  //           super.widget),
-                                  // );
-                                }
-                              });
-                            } else {
-                              print('No incident reports found.');
-                            }
-                          } catch (e) {
-                            print('Failed to update status: $e');
-                          }
+                        onPressed: () {
+                          _createMovingGeofence();
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
@@ -229,7 +198,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                         child: const Text(
                           'Take Action',
                           style: TextStyle(
-                              color: Colors.white), // Set the text color
+                            color: Colors.white, // Set the text color
+                          ),
                         ),
                       ),
                     )
@@ -243,7 +213,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     );
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -366,5 +335,72 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                   },
                 ),
     );
+  }
+
+  Future<void> _createMovingGeofence() async {
+    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+    final String roamAiApiKey =
+        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
+
+    // Geofence data to be sent to the Roam AI API
+    final Map<String, dynamic> geofenceData = {
+      "geometry_type": "circle",
+      "geometry_radius": 500,
+      "color_code": "FF0000",
+      "is_enabled": true,
+      "only_once": true,
+      "users": [
+        "5f520949e3872b0341bcf3e7",
+        "5f520955e3872b0341bcf3e8",
+        "5f083247b3611453c98a726f"
+      ]
+    };
+
+    // Send a request to the Roam AI API
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
+        headers: {
+          'Api-Key': roamAiApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(geofenceData),
+      );
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> responseData =
+            jsonDecode(response.body)['data'];
+
+        // Store geofence data in Firebase
+        final Map<String, dynamic> firebaseGeofenceData = {
+          "geofence_id": responseData["id"],
+          "account_id": responseData["account_id"],
+          "project_id": responseData["project_id"],
+          "geometry_type": responseData["geometry_type"],
+          "geometry_radius": responseData["geometry_radius"],
+          "is_enabled": responseData["is_enabled"],
+          "is_deleted": responseData["is_deleted"],
+          "only_once": responseData["only_once"],
+          "users": responseData["users"],
+          "created_at": responseData["created_at"],
+          "updated_at": responseData["updated_at"],
+        };
+
+        await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
+        print('Moving geofence created and data stored successfully.');
+        _showDialog('Success', 'Geofence created successfully.');
+      } else {
+        print('Error creating moving geofence: ${response.body}');
+        _showDialog('Error', 'Failed to create geofence.');
+      }
+    } catch (e) {
+      print('Error creating moving geofence: $e');
+      _showDialog('Error', 'An error occurred while creating the geofence.');
+    }
+  }
+
+  void _showDialog(String title, String message) {
+    // Implement a dialog function to show success/error messages
+    print('$title: $message'); // Simple console print for now
   }
 }
