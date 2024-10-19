@@ -18,7 +18,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
-  List<Map<String, dynamic>> _geofences = [];
   late Position position;
 
   final LocationSettings locationSettings = const LocationSettings(
@@ -39,7 +38,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
     // Fetch reports based on the user's current location
     _fetchReports(
-        position.longitude, position.latitude, 10); // Radius in kilometers
+        120.9983752, 14.5976671, 10); // Radius in kilometers
   }
 
   Future<Position> _determinePosition() async {
@@ -70,14 +69,14 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   // Fetch user's reports from Firebase and Roam.ai
-  Future<void> _fetchReports(
+  Future<void> _fetchReports(   
       double latitude, double longitude, double radius) async {
     setState(() {
       _loading = true;
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final int radiusInMeters = (radius * 100).toInt();
+    final int radiusInMeters = (radius * 1000).toInt();
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -350,9 +349,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
       "is_enabled": true,
       "only_once": true,
       "users": [
-        "5f520949e3872b0341bcf3e7",
-        "5f520955e3872b0341bcf3e8",
-        "5f083247b3611453c98a726f"
+        "670f5f1d27eac71fed8ed5d3",
+        "670e55b7c45da24f8a532be3",
       ]
     };
 

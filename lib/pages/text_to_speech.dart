@@ -18,7 +18,6 @@ class TextToSpeech extends StatefulWidget {
 
 class _TextToSpeechState extends State<TextToSpeech> {
   final SpeechToText _speechToText = SpeechToText();
-  bool _speechEnabled = false;
 
   @override
   void initState() {
@@ -27,7 +26,6 @@ class _TextToSpeechState extends State<TextToSpeech> {
   }
 
   void _initSpeech() async {
-    _speechEnabled = await _speechToText.initialize();
     setState(() {});
   }
 

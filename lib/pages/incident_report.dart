@@ -29,7 +29,6 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       TextEditingController(); // Email controller
   String? _imageUrl;
   File? _image;
-  bool _isUploading = false;
   bool _isLoading = false;
   bool _isRequestInProgress = false;
 
@@ -101,7 +100,6 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
 
     if (pickedFile != null) {
       setState(() {
-        _isUploading = true;
         _image = File(pickedFile.path); // Store the picked image
       });
 
@@ -112,7 +110,6 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
 
       _imageUrl = await storageRef.getDownloadURL();
       setState(() {
-        _isUploading = false;
       });
     }
   }
@@ -307,7 +304,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Incident')),
+      appBar: AppBar(title: const Text('Rep4ort Incident')),
       body: Stack(
         children: [
           Padding(

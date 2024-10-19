@@ -60,7 +60,7 @@ dependencies:
   uuid: ^4.4.2
   flutter_dotenv: ^5.1.0
   floating_tabbar: ^1.0.3
-  location: ^6.0.2
+
   firebase_storage: ^12.3.2
   cloud_firestore: ^5.4.4
   firebase_app_check: ^0.3.1+3
