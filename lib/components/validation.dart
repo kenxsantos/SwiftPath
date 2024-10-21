@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 class AuthValidation {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -86,8 +87,19 @@ class AuthValidation {
       // String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
       // Store user details in Realtime Database
+
       final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
 
+      Roam.createUser(
+          description: 'Creating user for: $email',
+          callBack: ({user}) {
+            // setState(() {
+            //   myUser = user;
+            // });
+            print(user);
+            Roam.offlineTracking(true);
+            Roam.allowMockLocation(allow: true);
+          });
       // final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
       // // Replace with your Roam.ai API Key
       // var response = await http.post(
