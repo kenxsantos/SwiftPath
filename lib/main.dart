@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swiftpath/pages/edit_profile_page.dart';
+import 'package:swiftpath/pages/my_location_tracking_page.dart';
+import 'package:swiftpath/pages/my_subscription_page.dart';
+import 'package:swiftpath/pages/my_user_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
@@ -67,6 +70,11 @@ class MyApp extends StatelessWidget {
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
         '/emergency-vehicles': (context) => const EmergencyVehicles(),
+        '/my-user': (context) => const MyUsersPage(),
+        '/my-location-tracking': (context) =>
+            const MyLocationTrackingPage(title: "Location Tracking"),
+        '/my-subscription': (context) =>
+            const MySubcriptionPage(title: "Subscription Page"),
         '/nearest-facility': (context) => const NearestFacility(
               latitude: 40.712776, // Replace with dynamic latitude
               longitude: -74.005974, // Replace with dynamic longitude

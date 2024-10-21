@@ -90,6 +90,27 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Logout'),
             onTap: () => _signOut(context), // Logout action
           ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('My User'),
+            onTap: () {
+              Navigator.pushNamed(context, '/my-user');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('My Location Tracking'),
+            onTap: () {
+              Navigator.pushNamed(context, '/my-location-tracking');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('My Subscription'),
+            onTap: () {
+              Navigator.pushNamed(context, '/my-subscription');
+            },
+          ),
         ],
       ),
     );
