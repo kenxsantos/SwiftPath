@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:swiftpath/components/validation.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -12,39 +13,6 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-
-  Future<void> _signOut(BuildContext context) async {
-    try {
-      // Check if the user signed in using Google
-      if (_auth.currentUser?.providerData.any((provider) =>
-              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
-          false) {
-        await _googleSignIn.signOut(); // Sign out from Google
-      }
-
-      // Sign out from Firebase
-      await _auth.signOut();
-
-      // Redirect to the login screen after sign-out
-      Navigator.pushReplacementNamed(context, '/login');
-    } catch (e) {
-      // Handle sign-out errors
-      print('Sign out failed: $e');
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Failed to sign out. Please try again.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
-            onTap: () => _signOut(context), // Logout action
+            onTap: () => AuthValidation.signOut(
+                context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
           ListTile(
             leading: const Icon(Icons.more),
