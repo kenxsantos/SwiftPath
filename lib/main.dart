@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swiftpath/pages/edit_profile_page.dart';
 import 'package:swiftpath/pages/my_location_tracking_page.dart';
 import 'package:swiftpath/pages/my_subscription_page.dart';
+import 'package:swiftpath/pages/my_trips_location.dart';
 import 'package:swiftpath/pages/my_user_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
@@ -75,6 +76,9 @@ class MyApp extends StatelessWidget {
             const MyLocationTrackingPage(title: "Location Tracking"),
         '/my-subscription': (context) =>
             const MySubcriptionPage(title: "Subscription Page"),
+        '/my-trips': (context) => const MyItemsPage(
+              title: "My Trips Page",
+            ),
         '/nearest-facility': (context) => const NearestFacility(
               latitude: 40.712776, // Replace with dynamic latitude
               longitude: -74.005974, // Replace with dynamic longitude
