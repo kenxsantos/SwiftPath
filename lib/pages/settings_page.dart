@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:swiftpath/components/validation.dart';
+import 'package:http/http.dart' as http;
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -80,8 +83,51 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.pushNamed(context, '/my-subscription');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('My Trips'),
+            onTap: () {
+              Navigator.pushNamed(context, '/my-trips');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('Create Trip'),
+            onTap: () {
+              _createTrip();
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _createTrip() async {
+    final Map<String, dynamic> geofenceData = {
+      "user_id": "67160b86c45da22b6c686977",
+      "is_started": true,
+      "origins": [
+        [120.9980341, 14.4960702]
+      ],
+      "destinations": [
+        [120.993528, 14.483879]
+      ]
+    };
+
+    final response = await http.post(
+      Uri.parse('https://api.roam.ai/v1/api/trips/'),
+      headers: {
+        'Api-key':
+            "10f984325931446ea8e54d6a76c44037", // Adjusted to match the sample
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(geofenceData),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("Trip created successfully: ${response.body}");
+    } else {
+      print("Failed to create trip: ${response.statusCode}, ${response.body}");
+    }
   }
 }
