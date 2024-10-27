@@ -29,10 +29,13 @@ import 'package:roam_flutter/roam_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({super.key, required this.origin, required this.destination});
 
+  final String? origin;
+  final String? destination;
   @override
   // ignore: library_private_types_in_public_api
+
   _MapScreenState createState() => _MapScreenState();
 }
 
@@ -43,11 +46,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   TextEditingController _searcheditingcontroller = TextEditingController();
   TextEditingController _autocompletesearcheditingcontroller =
       TextEditingController();
-  TextEditingController _originController = TextEditingController();
+  TextEditingController _originController =
+      TextEditingController(text: "Manila");
   TextEditingController _destinationController = TextEditingController();
 //! boolean values for ui
   bool showsearchbar = false;
-  bool showautocompletesearchbar = false;
+  bool showautocompletesearchbar = true;
   bool noreslt = false;
   bool originnoreslt = false;
   bool destinationnorelt = false;
@@ -292,6 +296,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _autocompletesearcheditingcontroller.addListener(() {
       onChange(_searchautocompleteAddr.value);
     });
+    _originController = TextEditingController(text: "Manila");
     _pageController = PageController(initialPage: 1, viewportFraction: 0.85)
       ..addListener(_onScroll);
   }
@@ -759,40 +764,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 color: Colors.white,
               ),
             ),
-            IconButton(
-                onPressed: () {
-                  setState(() {
-                    showsearchbar = false;
-                    showautocompletesearchbar = true;
-                    _autocompletesearcheditingcontroller.clear();
-                    _originController.clear();
-                    _destinationController.clear();
-                    //
-                    _searchautocompleteAddr.value = '';
-                    _originAddr.value = '';
-                    _destinationAddr.value = '';
-                    //
-                    radiusSlider = false;
-                    pressedNear = false;
-                    cardTapped = false;
-                    getDirections = false;
-                  });
-                  if (_polylines.isNotEmpty) {
-                    _originController.text = '';
-                    _destinationController.text = '';
-                    _autocompletesearcheditingcontroller.text = '';
-                    _searcheditingcontroller.text = '';
-                    _markers = {};
-                    _polylines = {};
-                  }
-                  if (fabKey.currentState!.isOpen) {
-                    fabKey.currentState!.close();
-                  }
-                },
-                icon: const Icon(
-                  Icons.keyboard_hide_sharp,
-                  color: Colors.white,
-                )),
             IconButton(
               onPressed: () {
                 setState(() {

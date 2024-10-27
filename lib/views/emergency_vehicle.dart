@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/services/map_services.dart';
 // import 'package:location/location.dart';
 
 class EmergencyVehicles extends StatefulWidget {
@@ -20,6 +24,9 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   bool _loading = true;
   List<Map<String, dynamic>> _geofences = [];
   late Position position;
+  Set<Polyline> _polylines = <Polyline>{};
+  int polylineIdCounter = 1;
+  Completer<GoogleMapController> _controller = Completer();
 
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -29,45 +36,43 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   @override
   void initState() {
     super.initState();
-
     _getUserLocationAndFetchReports();
   }
 
   Future<void> _getUserLocationAndFetchReports() async {
     // Get the current position of the user
-    position = await _determinePosition();
+    // position = await _determinePosition();
 
     // Fetch reports based on the user's current location
-    _fetchReports(
-        position.longitude, position.latitude, 10); // Radius in kilometers
+    _fetchReports(120.9996993, 14.4964995, 10); // Radius in kilometers
   }
 
-  Future<Position> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  // Future<Position> _determinePosition() async {
+  //   bool serviceEnabled;
+  //   LocationPermission permission;
 
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
+  //   // Check if location services are enabled
+  //   serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  //   if (!serviceEnabled) {
+  //     return Future.error('Location services are disabled.');
+  //   }
 
-    // Check for location permissions
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied.');
-      }
-    }
+  //   // Check for location permissions
+  //   permission = await Geolocator.checkPermission();
+  //   if (permission == LocationPermission.denied) {
+  //     permission = await Geolocator.requestPermission();
+  //     if (permission == LocationPermission.denied) {
+  //       return Future.error('Location permissions are denied.');
+  //     }
+  //   }
 
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
-    }
-    return await Geolocator.getCurrentPosition(
-        locationSettings: locationSettings);
-  }
+  //   if (permission == LocationPermission.deniedForever) {
+  //     return Future.error(
+  //         'Location permissions are permanently denied, we cannot request permissions.');
+  //   }
+  //   return await Geolocator.getCurrentPosition(
+  //       locationSettings: locationSettings);
+  // }
 
   // Fetch user's reports from Firebase and Roam.ai
   Future<void> _fetchReports(
@@ -133,6 +138,49 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     }
   }
 
+  _setPolyline(List<PointLatLng> points) {
+    final String polylineIdVal = 'polyline_$polylineIdCounter';
+
+    polylineIdCounter++;
+
+    _polylines.add(Polyline(
+        polylineId: PolylineId(polylineIdVal),
+        width: 2,
+        color: Colors.blue,
+        points: points.map((e) => LatLng(e.latitude, e.longitude)).toList()));
+  }
+
+  gotoPlace(double lat, double lng, double endLat, double endLng,
+      Map<String, dynamic> boundsNe, Map<String, dynamic> boundsSw) async {
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+            southwest: LatLng(boundsSw['lat'], boundsSw['lng']),
+            northeast: LatLng(boundsNe['lat'], boundsNe['lng'])),
+        25));
+    _setMarker(LatLng(lat, lng));
+    _setMarker(LatLng(endLat, endLng));
+  }
+
+  Set<Marker> _markers = <Marker>{};
+  Set<Marker> _markersDupe = <Marker>{};
+//initial marker count value
+  int markerIdCounter = 1;
+  void _setMarker(LatLng point, {String? info}) {
+    var counter = markerIdCounter++;
+
+    final Marker marker = Marker(
+        markerId: MarkerId('marker_$counter'),
+        position: point,
+        infoWindow: InfoWindow(title: info),
+        onTap: () {},
+        icon: BitmapDescriptor.defaultMarker);
+
+    setState(() {
+      _markers.add(marker);
+    });
+  }
+
   void _showReportDetailsModal(
       BuildContext context, Map<String, dynamic> report) {
     showDialog(
@@ -187,8 +235,29 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () {
-                          _createMovingGeofence();
+                        onPressed: () async {
+                          // _createMovingGeofence();
+                          // Navigator.pushNamed(context, '/maps', arguments: {
+                          //   'origin': report['latitude'],
+                          //   'destination': report['longitude'],
+                          // });
+                          // var directions = await MapServices().getDirections(
+                          //   report['address'],
+                          //   'University of the Philippines Diliman',
+                          // );
+                          // _markers = {};
+                          // _polylines = {};
+                          // gotoPlace(
+                          //     directions['start_location']['lat'],
+                          //     directions['start_location']['lng'],
+                          //     directions['end_location']['lat'],
+                          //     directions['end_location']['lng'],
+                          //     directions['bounds_ne'],
+                          //     directions['bounds_sw']);
+                          // _setPolyline(directions['polyline_decoded']);
+                          // FocusManager.instance.primaryFocus?.unfocus();
+                          // // _originAddr.value = '';
+                          // // _destinationAddr.value = '';
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
@@ -337,67 +406,67 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     );
   }
 
-  Future<void> _createMovingGeofence() async {
-    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-    final String roamAiApiKey =
-        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
+  // Future<void> _createMovingGeofence() async {
+  //   final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+  //   final String roamAiApiKey =
+  //       dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
 
-    // Geofence data to be sent to the Roam AI API
-    final Map<String, dynamic> geofenceData = {
-      "geometry_type": "circle",
-      "geometry_radius": 500,
-      "color_code": "FF0000",
-      "is_enabled": true,
-      "only_once": true,
-      "users": [
-        "67160e2fc45da22ca9d0f61f",
-        "6718a906acae090b0ad82ebf",
-        "6718a93a8d38d6102302fb9b"
-      ]
-    };
+  //   // Geofence data to be sent to the Roam AI API
+  //   final Map<String, dynamic> geofenceData = {
+  //     "geometry_type": "circle",
+  //     "geometry_radius": 500,
+  //     "color_code": "FF0000",
+  //     "is_enabled": true,
+  //     "only_once": true,
+  //     "users": [
+  //       "67160e2fc45da22ca9d0f61f",
+  //       "6718a906acae090b0ad82ebf",
+  //       "6718a93a8d38d6102302fb9b"
+  //     ]
+  //   };
 
-    // Send a request to the Roam AI API
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
-        headers: {
-          'Api-Key': roamAiApiKey,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(geofenceData),
-      );
+  //   // Send a request to the Roam AI API
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
+  //       headers: {
+  //         'Api-Key': roamAiApiKey,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: jsonEncode(geofenceData),
+  //     );
 
-      if (response.statusCode == 201) {
-        final Map<String, dynamic> responseData =
-            jsonDecode(response.body)['data'];
+  //     if (response.statusCode == 201) {
+  //       final Map<String, dynamic> responseData =
+  //           jsonDecode(response.body)['data'];
 
-        // Store geofence data in Firebase
-        final Map<String, dynamic> firebaseGeofenceData = {
-          "geofence_id": responseData["id"],
-          "account_id": responseData["account_id"],
-          "project_id": responseData["project_id"],
-          "geometry_type": responseData["geometry_type"],
-          "geometry_radius": responseData["geometry_radius"],
-          "is_enabled": responseData["is_enabled"],
-          "is_deleted": responseData["is_deleted"],
-          "only_once": responseData["only_once"],
-          "users": responseData["users"],
-          "created_at": responseData["created_at"],
-          "updated_at": responseData["updated_at"],
-        };
+  //       // Store geofence data in Firebase
+  //       final Map<String, dynamic> firebaseGeofenceData = {
+  //         "geofence_id": responseData["id"],
+  //         "account_id": responseData["account_id"],
+  //         "project_id": responseData["project_id"],
+  //         "geometry_type": responseData["geometry_type"],
+  //         "geometry_radius": responseData["geometry_radius"],
+  //         "is_enabled": responseData["is_enabled"],
+  //         "is_deleted": responseData["is_deleted"],
+  //         "only_once": responseData["only_once"],
+  //         "users": responseData["users"],
+  //         "created_at": responseData["created_at"],
+  //         "updated_at": responseData["updated_at"],
+  //       };
 
-        await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
-        print('Moving geofence created and data stored successfully.');
-        _showDialog('Success', 'Geofence created successfully.');
-      } else {
-        print('Error creating moving geofence: ${response.body}');
-        _showDialog('Error', 'Failed to create geofence.');
-      }
-    } catch (e) {
-      print('Error creating moving geofence: $e');
-      _showDialog('Error', 'An error occurred while creating the geofence.');
-    }
-  }
+  //       await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
+  //       print('Moving geofence created and data stored successfully.');
+  //       _showDialog('Success', 'Geofence created successfully.');
+  //     } else {
+  //       print('Error creating moving geofence: ${response.body}');
+  //       _showDialog('Error', 'Failed to create geofence.');
+  //     }
+  //   } catch (e) {
+  //     print('Error creating moving geofence: $e');
+  //     _showDialog('Error', 'An error occurred while creating the geofence.');
+  //   }
+  // }
 
   void _showDialog(String title, String message) {
     // Implement a dialog function to show success/error messages
