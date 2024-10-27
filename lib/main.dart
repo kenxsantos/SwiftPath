@@ -67,7 +67,8 @@ class MyApp extends StatelessWidget {
         '/edit-profile': (context) => const EditProfilePage(),
         '/route-history': (context) => const RouteHistoryPage(),
         '/report-history': (context) => const ReportHistoryPage(),
-        '/maps': (context) => const MapScreen(),
+        '/maps': (context) =>
+            const MapScreen(origin: 'Manila', destination: 'Quezon City'),
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
         '/emergency-vehicles': (context) => const EmergencyVehicles(),

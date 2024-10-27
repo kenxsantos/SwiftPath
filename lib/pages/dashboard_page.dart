@@ -48,7 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
         body: const TabBarView(
           children: [
             SettingsPage(),
-            MapScreen(),
+            // MapScreen(ori),
             IncidentReportPage(),
           ],
         ),
