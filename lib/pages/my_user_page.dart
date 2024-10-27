@@ -89,7 +89,7 @@ class _MyUsersPageState extends State<MyUsersPage> {
                   });
                   try {
                     await Roam.createUser(
-                        description: 'Joe',
+                        description: 'Ken Santos',
                         callBack: ({user}) {
                           setState(() {
                             myUser = user;
@@ -121,7 +121,6 @@ class _MyUsersPageState extends State<MyUsersPage> {
                           setState(() {
                             myUser = user;
                           });
-                          Roam.startTracking(trackingMode: 'active');
                           print(user);
                         });
                   } on PlatformException {

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -9,8 +10,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:roam_flutter/roam_flutter.dart';
 
 class AuthValidation {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   static void showAlert({
     required BuildContext context,
     required String title,
@@ -80,73 +79,14 @@ class AuthValidation {
     };
 
     try {
-      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      // String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-
-      // Store user details in Realtime Database
-
-      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-
       Roam.createUser(
-          description: 'Creating user for: $email',
-          callBack: ({user}) {
-            // setState(() {
-            //   myUser = user;
-            // });
-            print(user);
-            Roam.offlineTracking(true);
-            Roam.allowMockLocation(allow: true);
-          });
-      // final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-      // // Replace with your Roam.ai API Key
-      // var response = await http.post(
-      //   Uri.parse('https://api.roam.ai/v1/api/user/'),
-      //   headers: {
-      //     'Api-Key': roamAiApiKey,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: jsonEncode({
-      //     "app_type": 1,
-      //     "device_token": "token",
-      //     "description": "Device description",
-      //     "metadata": {}
-      //   }),
-      // );
-
-      // if (response.statusCode == 201) {
-      //   final Map<String, dynamic> responseData =
-      //       jsonDecode(response.body)['data'];
-
-      //   final Map<String, dynamic> createUserAPI = {
-      //     'email': email,
-      //     'password': password,
-      //     "user_id": responseData["user_id"],
-      //     "app_id": responseData["app_id"],
-      //     "geofence_events": responseData["geofence_events"],
-      //     "location_events": responseData["location_events"],
-      //     "trips_events": responseData["trips_events"],
-      //     "nearby_events": responseData["nearby_events"],
-      //     "location_listener": responseData["location_listener"],
-      //     "event_listener": responseData["event_listener"],
-      //     "metadata": {},
-      //     "sdk_version": responseData["sdk_version"],
-      //     "project_id": responseData["project_id"],
-      //     "account_id": responseData["account_id"],
-      //   };
-      //   await dbRef
-      //       .child('users/${userCredential.user?.uid}')
-      //       .set(createUserAPI);
-
-      //   print('Roam.ai user created successfully.');
-      //   onSuccess();
-      // } else {
-      //   print('Failed to create Roam.ai user: ${response.body}');
-      //   onFailure(); // Call the failure function
-      // }
-
+        description: 'Creating user for: $email',
+        callBack: ({user}) {
+          print(user);
+          Roam.offlineTracking(true);
+          Roam.allowMockLocation(allow: true);
+        },
+      );
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
@@ -208,15 +148,83 @@ class AuthValidation {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
+  static Future<void> signInWithGoogle(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
     try {
-      if (_auth.currentUser?.providerData.any((provider) =>
-              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
-          false) {
-        await _googleSignIn.signOut();
+      final GoogleUser = await googleSignIn.signIn();
+      if (GoogleUser == null) {
+        // User cancelled the sign-in
+        return;
       }
 
-      await _auth.signOut();
+      final GoogleAuth = await GoogleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: GoogleAuth.accessToken,
+        idToken: GoogleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      UserCredential userCredential =
+          await auth.signInWithCredential(credential);
+      User? userData = userCredential.user;
+
+      if (userData == null) {
+        print('Error: User credential is null.');
+        return;
+      }
+
+      Roam.createUser(
+          description: 'Creating user for: $userData',
+          callBack: ({user}) {
+            if (user != null) {
+              // If user is successfully created
+              print(user);
+
+              // Start offline tracking and allow mock location
+              Roam.offlineTracking(true);
+              Roam.allowMockLocation(allow: true);
+            }
+          });
+
+      // Navigate to the splash screen after successful sign-in
+      Navigator.pushReplacementNamed(context, '/splash-screen');
+    } catch (e) {
+      print('Sign in failed: $e');
+      _showErrorDialog(context, e.toString());
+    }
+  }
+
+  static void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> signOut(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
+    try {
+      if (auth.currentUser?.providerData.any((provider) =>
+              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
+          false) {
+        await googleSignIn.signOut();
+      }
+
+      await auth.signOut();
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
       print('Sign out failed: $e');

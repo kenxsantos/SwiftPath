@@ -349,8 +349,9 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
       "is_enabled": true,
       "only_once": true,
       "users": [
-        "670f5f1d27eac71fed8ed5d3",
-        "670e55b7c45da24f8a532be3",
+        "67160e2fc45da22ca9d0f61f",
+        "6718a906acae090b0ad82ebf",
+        "6718a93a8d38d6102302fb9b"
       ]
     };
 

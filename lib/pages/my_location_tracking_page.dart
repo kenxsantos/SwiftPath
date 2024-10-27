@@ -60,13 +60,12 @@ class _MyLocationTrackingPageState extends State<MyLocationTrackingPage> {
                     });
                   });
 
-                  Roam.setForeground(true, "Flutter Example", "Tap to open",
-                      "mipmap/ic_launcher", "ai.roam.example.MainActivity");
+                  // Roam.setForeground(true, "Flutter Example", "Tap to open",
+                  //     "mipmap/ic_launcher", "ai.roam.example.MainActivity");
                   try {
                     switch (valueText) {
                       case "active":
                         Roam.startTracking(trackingMode: "active");
-
                         Navigator.pop(context);
                         break;
                       case "balanced":
@@ -164,8 +163,8 @@ class _MyLocationTrackingPageState extends State<MyLocationTrackingPage> {
             ElevatedButton(
                 child: const Text('Stop Tracking'),
                 onPressed: () async {
-                  Roam.setForeground(false, "Flutter Example", "Tap to open",
-                      "mipmap/ic_launcher", "ai.roam.example.MainActivity");
+                  // Roam.setForeground(false, "Flutter Example", "Tap to open",
+                  //     "mipmap/ic_launcher", "ai.roam.example.MainActivity");
                   try {
                     await Roam.stopTracking();
                   } on PlatformException {
