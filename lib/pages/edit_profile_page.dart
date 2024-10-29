@@ -157,7 +157,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           },
           icon: const Icon(
             Icons.arrow_back_ios_outlined,
-            color: Colors.blue,
+            color: Color.fromARGB(255, 224, 59, 59),
             size: 24,
           ),
         ),
@@ -172,7 +172,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: const Text(
                 'Save',
                 style: TextStyle(
-                  color: Colors.blue,
+                  color: Color.fromARGB(255, 224, 59, 59),
                   fontSize: 15,
                 ),
               ),

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,17 +19,21 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Background color for AppBar
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 50),
           Center(
             child: Text(
-              'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}!',
+              'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 30,
+                fontSize: 28,
+                color: Color.fromARGB(255, 224, 59, 59), // Title color
               ),
             ),
           ),
@@ -39,60 +42,87 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {
               Navigator.pushNamed(context, '/edit-profile');
             },
-            leading: const Icon(Icons.person),
-            title: const Text('Profile'),
+            leading: const Icon(Icons.person, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Profile',
+              style: TextStyle(color: Colors.black87),
+            ),
           ),
           ListTile(
             onTap: () {
               Navigator.pushNamed(context, '/route-history');
             },
-            leading: const Icon(Icons.history),
-            title: const Text('Route History'),
+            leading: const Icon(Icons.history, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Route History',
+              style: TextStyle(color: Colors.black87),
+            ),
           ),
           ListTile(
             onTap: () {
               Navigator.pushNamed(context, '/report-history');
             },
-            leading: const Icon(Icons.pending_actions_outlined),
-            title: const Text('Report History'),
+            leading: const Icon(Icons.pending_actions_outlined, color:Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Report History',
+              style: TextStyle(color: Colors.black87),
+            ),
           ),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            leading: const Icon(Icons.logout, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () => AuthValidation.signOut(
-                context: context, auth: _auth, googleSignIn: _googleSignIn),
+              context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
           ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('My User'),
+            leading: const Icon(Icons.more, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'My User',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () {
               Navigator.pushNamed(context, '/my-user');
             },
           ),
           ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('My Location Tracking'),
+            leading: const Icon(Icons.location_on, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'My Location Tracking',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () {
               Navigator.pushNamed(context, '/my-location-tracking');
             },
           ),
           ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('My Subscription'),
+            leading: const Icon(Icons.subscriptions, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'My Subscription',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () {
               Navigator.pushNamed(context, '/my-subscription');
             },
           ),
           ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('My Trips'),
+            leading: const Icon(Icons.trip_origin, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'My Trips',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () {
               Navigator.pushNamed(context, '/my-trips');
             },
           ),
           ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('Create Trip'),
+            leading: const Icon(Icons.add_circle_outline, color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Create Trip',
+              style: TextStyle(color: Colors.black87),
+            ),
             onTap: () {
               _createTrip();
             },
@@ -117,8 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final response = await http.post(
       Uri.parse('https://api.roam.ai/v1/api/trips/'),
       headers: {
-        'Api-key':
-            "10f984325931446ea8e54d6a76c44037", // Adjusted to match the sample
+        'Api-key': "10f984325931446ea8e54d6a76c44037",
         'Content-Type': 'application/json',
       },
       body: jsonEncode(geofenceData),
