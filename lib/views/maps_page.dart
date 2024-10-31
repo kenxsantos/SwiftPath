@@ -401,152 +401,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       top: 40.0,
       right: 15.0,
       left: 15.0,
-      child: AutoCompleteSearchBar(
-        textController: _searchEditingController,
-        searchNotifier: _searchAutoCompleteAddr,
-        onSearch: (value) async {
-          GoogleMapController controller = await _controller.future;
-          await searchAndNavigate(controller, value);
-        },
-        onSpeechResult: (text) async {
-          GoogleMapController controller = await _controller.future;
-          await searchAndNavigate(controller, text);
-        },
+      child: SearchAutoComplete(
+        searchAutocompleteAddr: _searchAutoCompleteAddr,
+        searchEditingController: _searchEditingController,
+        controllerFuture: () => _controller.future,
+        searchAndNavigate: (controller, value, {zoom = 14}) =>
+            searchAndNavigate(controller, value, zoom: 14),
+        debounce: _debounce,
       ),
     );
   }
 
-// //!function to show auto complete suggestion in stack
   Positioned showAutoCompleteList() {
-    return noResult == false && _searchAutoCompleteAddr.value.trim().length >= 2
-        ? Positioned(
-            top: 110,
-            right: 15,
-            left: 15,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_searchAutoCompleteAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () {
-                                  setState(() async {
-                                    _autoCompleteSearchEditingController.text =
-                                        snapshot.data['predictions'][index]
-                                                ['description']
-                                            .toString();
-                                    //!important
-                                    FocusScope.of(context).requestFocus(
-                                        FocusNode()); //to close the keyboard
-                                    searchAndNavigate(
-                                        await _controller.future,
-                                        _autoCompleteSearchEditingController
-                                            .text,
-                                        zoom: 14);
-                                    _searchAutoCompleteAddr.value = '';
-                                  });
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_searchAutoCompleteAddr.value
-                                            .trim()
-                                            .length >=
-                                        2 &&
-                                    snapshot.hasData) {
-                                  noResult = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
-        : Positioned(
-            top: 110,
-            right: 15,
-            left: 15,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  // Close Button positioned at the top-right corner
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          showAutoCompleteSearchBar = false;
-                          _autoCompleteSearchEditingController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  // Centered content
-                  const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'No results to show',
-                          style: TextStyle(fontWeight: FontWeight.w400),
-                        ),
-                        SizedBox(height: 5.0),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+    return Positioned(
+      top: 110,
+      right: 15,
+      left: 15,
+      child: AutoCompleteList(
+        searchValueNotifier: _searchAutoCompleteAddr,
+        searchEditingController: _autoCompleteSearchEditingController,
+        onSearchChange: (value) => onChange(value),
+        controllerFuture: () => _controller.future,
+        searchAndNavigate: (controller, value, {zoom = 14}) =>
+            searchAndNavigate(controller, value, zoom: 14),
+      ),
+    );
   }
 
 //!function to get direction from origin to destination in stack
