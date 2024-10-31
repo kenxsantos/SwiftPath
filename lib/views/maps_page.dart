@@ -51,11 +51,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool noResult = false;
   bool originNoResult = false;
   bool destinationNoResult = false;
-  bool radiusSlider = false;
-  bool cardTapped = false;
-  bool pressedNear = false;
+
   bool getDirections = false;
   String? myLocation;
+
+  var tappedPoint;
 
   final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
@@ -67,26 +67,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   ValueNotifier<String> _originAddr = ValueNotifier<String>('');
   ValueNotifier<String> _destinationAddr = ValueNotifier<String>('');
   String tokenKey = '';
-  var tappedPoint;
+
   var radiusValue = 3000.0;
-  List allFavoritePlaces = [];
+
   ValueNotifier<String> _searchAutoCompleteAddr = ValueNotifier<String>('');
   Completer<GoogleMapController> _controller = Completer();
-
-  late PageController _pageController;
-  int prevPage = 0;
-  var tappedPlaceDetail;
-  String placeImg = '';
-  var photoGalleryIndex = 0;
-  bool showBlankCard = false;
-  bool isReviews = true;
-  bool isPhotos = false;
-  var selectedPlaceDetails;
 
   static const CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(20.5937, 78.9629),
     zoom: 4,
   );
+
   CameraPosition _currentCameraPosition = _kGooglePlex;
 
   var uuid = const Uuid();
@@ -190,7 +181,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           strokeColor: Colors.blue,
           strokeWidth: 1));
       getDirections = false;
-      radiusSlider = true;
     });
   }
 
@@ -201,7 +191,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _autoCompleteSearchEditingController.addListener(() {
       onChange(_searchAutoCompleteAddr.value);
     });
-    _originController = TextEditingController(text: "Manila");
+    _originController = TextEditingController();
   }
 
   @override
@@ -245,13 +235,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     },
                     // onTap: (point) {
                     //   tappedPoint = point;
-                    //   _setCircle(point);
+                    //   _setMarker(point);
                     // },
                   )),
               //!stack if asked autocomplet seachnbar
               showAutoCompleteSearchBar
                   ? autoCompleteSearchBar()
-                  : Container(), // this way also correct
+                  : autoCompleteSearchBar(), // this way also correct
               //!stack of navigate to user current location using GPS
               showGPSlocator(),
               //!Stack to show the autocomplete result
@@ -349,7 +339,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             IconButton(
               onPressed: () {
                 setState(() {
-                  showAutoCompleteSearchBar = false;
+                  showAutoCompleteSearchBar = true;
                   _autoCompleteSearchEditingController.clear();
                   _originController.clear();
                   _destinationController.clear();
@@ -357,10 +347,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   _searchAutoCompleteAddr.value = '';
                   _originAddr.value = '';
                   _destinationAddr.value = '';
-                  //
-                  radiusSlider = false;
-                  pressedNear = false;
-                  cardTapped = false;
+
                   getDirections = true;
                 });
                 if (_polylines.isNotEmpty) {
@@ -768,23 +755,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         25));
     _setMarker(LatLng(lat, lng));
     _setMarker(LatLng(endLat, endLng));
-  }
-
-//! functction to move camera sightly upon sliding the page viewer
-  Future<void> moveCameraSlightly() async {
-    final GoogleMapController controller = await _controller.future;
-
-    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-        target: LatLng(
-            allFavoritePlaces[_pageController.page!.toInt()]['geometry']
-                    ['location']['lat'] +
-                0.0125,
-            allFavoritePlaces[_pageController.page!.toInt()]['geometry']
-                    ['location']['lng'] +
-                0.005),
-        zoom: 14.0,
-        bearing: 45.0,
-        tilt: 45.0)));
   }
 
 //! functction to go to searched place
