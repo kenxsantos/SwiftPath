@@ -12,8 +12,10 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/components/floating_button.dart';
 import 'package:swiftpath/pages/incident_report.dart';
 import 'package:swiftpath/pages/settings_page.dart';
+import 'package:swiftpath/components/searchBar.dart';
 import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:uuid/uuid.dart';
@@ -38,15 +40,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   TextEditingController _searchEditingController = TextEditingController();
   TextEditingController _autoCompleteSearchEditingController =
       TextEditingController();
-  TextEditingController _originController =
-      TextEditingController(text: "Manila");
+  TextEditingController _originController = TextEditingController();
   TextEditingController _destinationController = TextEditingController();
 
-  bool showsearchbar = false;
   bool showAutoCompleteSearchBar = true;
-  bool noreslt = false;
-  bool originnoreslt = false;
-  bool destinationnorelt = false;
+  bool noResult = false;
+  bool originNoResult = false;
+  bool destinationNoResult = false;
   bool radiusSlider = false;
   bool cardTapped = false;
   bool pressedNear = false;
@@ -68,9 +68,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List allFavoritePlaces = [];
   ValueNotifier<String> _searchAutoCompleteAddr = ValueNotifier<String>('');
   Completer<GoogleMapController> _controller = Completer();
-
-  int polylineIdCounter = 1;
-  Set<Polyline> _polylines = <Polyline>{};
 
   late PageController _pageController;
   int prevPage = 0;
@@ -100,7 +97,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! Function to get current user location through GPS
-  Future<Position> getcurrentuserlocation() async {
+  Future<Position> getCurrentUserLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -161,6 +158,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! Function to set polyline on the map upon searching
+  int polylineIdCounter = 1;
+  Set<Polyline> _polylines = <Polyline>{};
   void _setPolyline(List<PointLatLng> points) {
     final String polylineIdVal = 'polyline_$polylineIdCounter';
 
@@ -346,7 +345,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             IconButton(
               onPressed: () {
                 setState(() {
-                  showsearchbar = false;
                   showAutoCompleteSearchBar = false;
                   _autoCompleteSearchEditingController.clear();
                   _originController.clear();
@@ -385,35 +383,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Function for GPS locator in stack
   Positioned showGPSlocator() {
     return Positioned(
-      bottom: MediaQuery.of(context).size.height * 0.15,
-      right: 5,
-      child: FloatingActionButton(
-        onPressed: () async {
-          GoogleMapController controller = await _controller.future;
-          developer.log('pressed');
-          getcurrentuserlocation().then((value) async {
-            await controller.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: LatLng(value.latitude, value.longitude),
-                  zoom: 14.2,
-                ),
-              ),
-            );
-            showAutoCompleteSearchBar = false;
-            _setMarker(LatLng(value.latitude, value.longitude),
-                info: "My Current Location");
-          });
-        },
-        shape: const CircleBorder(),
-        backgroundColor: Colors.red.shade400,
-        child: const Icon(
-          Icons.my_location_rounded,
-          color: Colors.white,
-          size: 25,
-        ),
-      ),
-    );
+        bottom: MediaQuery.of(context).size.height * 0.15,
+        right: 5,
+        child: CustomFloatingActionButton(
+          controller: _controller,
+          getCurrentUserLocation: getCurrentUserLocation,
+          setMarker: _setMarker,
+          backgroundColor: Colors.red.shade400,
+          icon: Icons.my_location_rounded,
+          iconSize: 25.0,
+          markerInfo: "My Current Location",
+        ));
   }
 
   Positioned autocompletesearchbar() {
@@ -421,67 +401,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       top: 40.0,
       right: 15.0,
       left: 15.0,
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            width: double.infinity,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5.0), color: Colors.white),
-            child: SizedBox(
-              height: 50.0,
-              child: ValueListenableBuilder(
-                valueListenable: _searchAutoCompleteAddr,
-                builder: (BuildContext context, dynamic value, Widget? _) {
-                  return TextField(
-                    controller: _searchEditingController,
-                    keyboardType: TextInputType.streetAddress,
-                    autofocus: true, //for keyboard focus upon the start
-                    textInputAction: TextInputAction
-                        .search, //to trigger enter key here search key
-                    onEditingComplete: () async {
-                      searchandNavigate(await _controller.future, value,
-                          zoom: 14);
-                      FocusManager.instance.primaryFocus
-                          ?.unfocus(); //to hide keyboard upon pressing done
-                      _searchAutoCompleteAddr.value = '';
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search Auto Complete..',
-                      border: InputBorder.none,
-                      contentPadding:
-                          const EdgeInsets.only(left: 15.0, top: 12.0),
-                      suffixIcon: TextToSpeech(
-                        textController: _searchEditingController,
-                        onSpeechResult: (text) async {
-                          GoogleMapController mapController =
-                              await _controller.future.then(
-                            (value) => searchandNavigate(value, text, zoom: 14),
-                          );
-                        },
-                      ),
-                    ),
-                    onChanged: (val) {
-                      //!<<<<debounce
-                      if (_debounce?.isActive ?? false) _debounce?.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                        _searchAutoCompleteAddr.value = val;
-                      });
-                      //!debounce>>>>
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+      child: AutoCompleteSearchBar(
+        textController: _searchEditingController,
+        searchNotifier: _searchAutoCompleteAddr,
+        onSearch: (value) async {
+          GoogleMapController controller = await _controller.future;
+          await searchAndNavigate(controller, value);
+        },
+        onSpeechResult: (text) async {
+          GoogleMapController controller = await _controller.future;
+          await searchAndNavigate(controller, text);
+        },
       ),
     );
   }
 
 // //!function to show auto complete suggestion in stack
   Positioned showAutoCompleteList() {
-    return noreslt == false && _searchAutoCompleteAddr.value.trim().length >= 2
+    return noResult == false && _searchAutoCompleteAddr.value.trim().length >= 2
         ? Positioned(
             top: 110,
             right: 15,
@@ -518,7 +455,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     //!important
                                     FocusScope.of(context).requestFocus(
                                         FocusNode()); //to close the keyboard
-                                    searchandNavigate(
+                                    searchAndNavigate(
                                         await _controller.future,
                                         _autoCompleteSearchEditingController
                                             .text,
@@ -538,7 +475,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             .length >=
                                         2 &&
                                     snapshot.hasData) {
-                                  noreslt = true;
+                                  noResult = true;
                                 }
                               });
                               return const Center(
@@ -840,7 +777,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 //!Function to show auto complete suggestion in stack upon origin to destination navigation in flutter
   Positioned showOriginAutoCompleteListUponNavigation() {
-    return originnoreslt == false && _originAddr.value.trim().length >= 2
+    return originNoResult == false && _originAddr.value.trim().length >= 2
         ? Positioned(
             top: 170,
             right: 10,
@@ -890,7 +827,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               setState(() {
                                 if (_originAddr.value.trim().length >= 2 &&
                                     snapshot.hasData) {
-                                  originnoreslt = true;
+                                  originNoResult = true;
                                 }
                               });
                               return const Center(
@@ -952,7 +889,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         GestureDetector(
                           onTap: () async {
                             developer.log('pressed');
-                            await getcurrentuserlocation().then((value) {
+                            await getCurrentUserLocation().then((value) {
                               placemarkFromCoordinates(
                                       value.latitude, value.longitude)
                                   .then((placemark) {
@@ -1016,7 +953,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Positioned showDestinationAutoCompleteListUponNavigation() {
-    return destinationnorelt == false &&
+    return destinationNoResult == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
             top: 170,
@@ -1077,7 +1014,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               setState(() {
                                 if (_destinationAddr.value.trim().length >= 2 &&
                                     snapshot.hasData) {
-                                  destinationnorelt = true;
+                                  destinationNoResult = true;
                                 }
                               });
                               return const Center(
@@ -1153,7 +1090,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! functction for naviagtion to a spectific latlang
-  searchandNavigate(GoogleMapController mapController, String inputvalue,
+  searchAndNavigate(GoogleMapController mapController, String inputvalue,
       {int? zoom}) async {
     await locationFromAddress(inputvalue).then(
       (result) => {
