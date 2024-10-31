@@ -12,11 +12,15 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/components/autocomplete_list.dart';
+import 'package:swiftpath/components/destination_autocomplete_list_false.dart';
+import 'package:swiftpath/components/destination_autocomplete_list_true.dart';
 import 'package:swiftpath/components/floating_button.dart';
+import 'package:swiftpath/components/origin_autocomplete_list_true.dart';
+import 'package:swiftpath/components/origin_autocomplete_list_false.dart';
 import 'package:swiftpath/pages/incident_report.dart';
 import 'package:swiftpath/pages/settings_page.dart';
 import 'package:swiftpath/components/searchBar.dart';
-import 'package:swiftpath/pages/text_to_speech.dart';
 import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -246,7 +250,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   )),
               //!stack if asked autocomplet seachnbar
               showAutoCompleteSearchBar
-                  ? autocompletesearchbar()
+                  ? autoCompleteSearchBar()
                   : Container(), // this way also correct
               //!stack of navigate to user current location using GPS
               showGPSlocator(),
@@ -396,7 +400,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ));
   }
 
-  Positioned autocompletesearchbar() {
+  Positioned autoCompleteSearchBar() {
     return Positioned(
       top: 40.0,
       right: 15.0,
@@ -661,174 +665,45 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_originAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    _originController.text = snapshot
-                                        .data['predictions'][index]
-                                            ['description']
-                                        .toString();
-
-                                    _originAddr.value = '';
-                                  });
-                                  FocusManager.instance.primaryFocus
-                                      ?.nextFocus();
-                                  _originAddr.value = '';
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_originAddr.value.trim().length >= 2 &&
-                                    snapshot.hasData) {
-                                  originNoResult = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
+            child: OriginAutoCompleteListTrue(
+              searchValueNotifier: _originAddr,
+              futureData: (value) => onChange(value),
+              textController: _originController,
+              onSelectItem: (selectedText) {
+                setState(() {
+                  _originController.text = selectedText;
+                  _originAddr.value = '';
+                });
+              },
+            ))
         : Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    right: 10, // Close button positioned to the top-right
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Use the close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          getDirections = false;
-                          _originController.clear();
-                          _destinationController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            developer.log('pressed');
-                            await getCurrentUserLocation().then((value) {
-                              placemarkFromCoordinates(
-                                      value.latitude, value.longitude)
-                                  .then((placemark) {
-                                _originController.text =
-                                    '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} ${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} ${placemark.reversed.last.country}';
-                                _originController.selection =
-                                    TextSelection.fromPosition(TextPosition(
-                                        offset: _originController.text.length));
-                                FocusManager.instance.primaryFocus?.nextFocus();
-                                _originAddr.value = '';
-                              });
-                            }).then((value) => FocusManager
-                                .instance.primaryFocus
-                                ?.nextFocus());
-                          },
-                          child: Container(
-                            height: 45,
-                            padding: const EdgeInsets.all(5),
-                            margin: const EdgeInsets.only(
-                                top: 10, right: 15, left: 15, bottom: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white60.withOpacity(1),
-                              borderRadius: BorderRadius.circular(10.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.grey,
-                                  offset: Offset(0.0, 1.0), //(x,y)
-                                  blurRadius: 3.0,
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.my_location_rounded,
-                                  color: Colors.black45,
-                                  size: 20,
-                                ),
-                                Text(" Use your location",
-                                    style: TextStyle(
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w500)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10.0),
-                        const Text(
-                          'No results to show',
-                          style: TextStyle(fontWeight: FontWeight.w400),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+            child: OriginAutocompleteListFalse(
+              onClose: () {
+                setState(() {
+                  getDirections = false;
+                  _originController.clear();
+                  _destinationController.clear();
+                });
+              },
+              onUseCurrentLocation: () async {
+                await getCurrentUserLocation().then((value) {
+                  placemarkFromCoordinates(value.latitude, value.longitude)
+                      .then((placemark) {
+                    _originController.text =
+                        '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} '
+                        '${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} '
+                        '${placemark.reversed.last.country}';
+                    _originController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: _originController.text.length));
+                    FocusManager.instance.primaryFocus?.nextFocus();
+                    _originAddr.value = '';
+                  });
+                });
+              },
+            ));
   }
 
   Positioned showDestinationAutoCompleteListUponNavigation() {
@@ -838,134 +713,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_destinationAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () async {
-                                  _destinationController.text = snapshot
-                                      .data['predictions'][index]['description']
-                                      .toString();
-                                  var directions = await MapServices()
-                                      .getDirections(_originController.text,
-                                          _destinationController.text);
-                                  _markers = {};
-                                  _polylines = {};
-                                  gotoPlace(
-                                      directions['start_location']['lat'],
-                                      directions['start_location']['lng'],
-                                      directions['end_location']['lat'],
-                                      directions['end_location']['lng'],
-                                      directions['bounds_ne'],
-                                      directions['bounds_sw']);
-                                  _setPolyline(directions['polyline_decoded']);
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  _originAddr.value = '';
-                                  _destinationAddr.value = '';
-
-                                  setState(() {});
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_destinationAddr.value.trim().length >= 2 &&
-                                    snapshot.hasData) {
-                                  destinationNoResult = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
+            child: DestinationAutoCompleteListTrue(
+              destinationAddr: _destinationAddr,
+              destinationController: _destinationController,
+              originController: _originController,
+              onChange: (value) => onChange(value),
+              gotoPlace: gotoPlace,
+              setPolyline: _setPolyline,
+              mapServices: MapServices(),
+            ))
         : Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Use the close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          getDirections = false;
-                          _originController.clear();
-                          _destinationController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'No results to show',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        SizedBox(height: 5.0),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+            child: DestinationAutoCompleteListFalse(
+              onClose: () {
+                setState(() {
+                  getDirections = false; // Update your state variable
+                  _originController.clear(); // Clear the origin controller
+                  _destinationController
+                      .clear(); // Clear the destination controller
+                });
+              },
+            ));
   }
 
 //! functction for naviagtion to a spectific latlang
