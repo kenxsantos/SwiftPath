@@ -9,6 +9,7 @@ import 'package:swiftpath/pages/my_user_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
+import 'package:swiftpath/pages/show_routes.dart';
 import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
@@ -67,8 +68,7 @@ class MyApp extends StatelessWidget {
         '/edit-profile': (context) => const EditProfilePage(),
         '/route-history': (context) => const RouteHistoryPage(),
         '/report-history': (context) => const ReportHistoryPage(),
-        '/maps': (context) =>
-            const MapScreen(origin: 'Manila', destination: 'Quezon City'),
+        '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
         '/emergency-vehicles': (context) => const EmergencyVehicles(),
@@ -80,10 +80,11 @@ class MyApp extends StatelessWidget {
         '/my-trips': (context) => const MyItemsPage(
               title: "My Trips Page",
             ),
-        '/nearest-facility': (context) => const NearestFacility(
-              latitude: 40.712776, // Replace with dynamic latitude
-              longitude: -74.005974, // Replace with dynamic longitude
-            ),
+        '/show-routes': (context) => const ShowRoutes(),
+        // '/nearest-facility': (context) => const NearestFacility(
+        //       latitude: 40.712776, // Replace with dynamic latitude
+        //       longitude: -74.005974, // Replace with dynamic longitude
+        //     ),
       },
     );
   }
