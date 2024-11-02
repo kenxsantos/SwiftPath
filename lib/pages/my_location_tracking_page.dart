@@ -146,7 +146,7 @@ class _MyLocationTrackingPageState extends State<MyLocationTrackingPage> {
                 child: const Text('Update Current Location'),
                 onPressed: () async {
                   try {
-                    Map<String, dynamic> testMetaData = Map();
+                    Map<String, dynamic> testMetaData = {};
                     testMetaData['param1'] = "value";
                     testMetaData['param2'] = 123;
                     await Roam.updateCurrentLocation(

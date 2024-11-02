@@ -11,13 +11,13 @@ class SearchAutoComplete extends StatelessWidget {
   final Timer? debounce;
 
   const SearchAutoComplete({
-    Key? key,
+    super.key,
     required this.searchAutocompleteAddr,
     required this.searchEditingController,
     required this.controllerFuture,
     required this.searchAndNavigate,
     this.debounce,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

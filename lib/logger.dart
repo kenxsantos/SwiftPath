@@ -16,7 +16,6 @@ class CustomLogger {
   static Future<File> writeLog(String log) async {
     final file = await CustomLogger._localFile;
     print(file.path);
-    return file.writeAsString(log + "\n\n\n",
-        flush: true, mode: FileMode.append);
+    return file.writeAsString("$log\n\n\n", flush: true, mode: FileMode.append);
   }
 }

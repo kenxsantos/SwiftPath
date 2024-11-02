@@ -22,11 +22,11 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
-  List<Map<String, dynamic>> _geofences = [];
+  final List<Map<String, dynamic>> _geofences = [];
   late Position position;
-  Set<Polyline> _polylines = <Polyline>{};
+  final Set<Polyline> _polylines = <Polyline>{};
   int polylineIdCounter = 1;
-  Completer<GoogleMapController> _controller = Completer();
+  final Completer<GoogleMapController> _controller = Completer();
 
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -162,8 +162,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     _setMarker(LatLng(endLat, endLng));
   }
 
-  Set<Marker> _markers = <Marker>{};
-  Set<Marker> _markersDupe = <Marker>{};
+  final Set<Marker> _markers = <Marker>{};
+  final Set<Marker> _markersDupe = <Marker>{};
 //initial marker count value
   int markerIdCounter = 1;
   void _setMarker(LatLng point, {String? info}) {
