@@ -27,10 +27,8 @@ import '../models/auto_complete_result.dart';
 import '../services/map_services.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key, required this.origin, required this.destination});
+  const MapScreen({super.key});
 
-  final String? origin;
-  final String? destination;
   @override
   // ignore: library_private_types_in_public_api
 
@@ -56,7 +54,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   var tappedPoint;
 
-  final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  final String googleMapKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -73,8 +71,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Completer<GoogleMapController> _controller = Completer();
 
   static const CameraPosition _kGooglePlex = CameraPosition(
-    target: LatLng(20.5937, 78.9629),
-    zoom: 4,
+    target: LatLng(14.4964995, 120.9996993),
+    zoom: 10.4746,
   );
 
   CameraPosition _currentCameraPosition = _kGooglePlex;
@@ -118,7 +116,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     String baseURL =
         'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     String request =
-        '$baseURL?input=$input&key=$google_map_key&sessiontoken=$_sessionToken';
+        '$baseURL?input=$input&key=$googleMapKey&sessiontoken=$_sessionToken';
     var response = await http.get(Uri.parse(request));
     var body = response.body.toString();
     developer.log(body);
@@ -130,11 +128,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-//! Function to set marker on the map upon searching
-//Markers set
   Set<Marker> _markers = <Marker>{};
   Set<Marker> _markersDupe = <Marker>{};
-//initial marker count value
+
   int markerIdCounter = 1;
   void _setMarker(LatLng point, {String? info}) {
     var counter = markerIdCounter++;
@@ -232,19 +228,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     onCameraMove: (CameraPosition position) {
                       _currentCameraPosition = position;
                     },
-                    // onTap: (point) {
-                    //   tappedPoint = point;
-                    //   _setMarker(point);
-                    // },
+                    onTap: (point) {
+                      tappedPoint = point;
+                      _setMarker(point);
+                    },
                   )),
-              //!stack if asked autocomplet seachnbar
-              showAutoCompleteSearchBar
-                  ? autoCompleteSearchBar()
-                  : autoCompleteSearchBar(), // this way also correct
-              //!stack of navigate to user current location using GPS
+              autoCompleteSearchBar(),
               showGPSlocator(),
-              //!Stack to show the autocomplete result
-              //?implemented value Listanble builder without calling setstate() in onchange of textfield
               ValueListenableBuilder(
                 valueListenable: _searchAutoCompleteAddr,
                 builder: (context, value, _) {
