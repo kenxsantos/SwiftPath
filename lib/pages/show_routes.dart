@@ -40,6 +40,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   final Set<Polyline> _polylines = <Polyline>{};
   final Set<Circle> _circles = <Circle>{};
   int _markerIdCounter = 1;
+  int _markerIdCounterForEmergecy = 1;
   int _polylineIdCounter = 1;
   double _radiusValue = 3000.0;
   LatLng? _tappedPoint;
@@ -71,7 +72,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
             _addPolyline(polylinePoints);
             final startPoint = LatLng(
                 polylinePoints.first.latitude, polylinePoints.first.longitude);
-            _addMarker(startPoint, info: 'Start Location');
+            _addMarkerForEmergency(startPoint, info: 'Start Location');
             final endPoint = LatLng(
                 polylinePoints.last.latitude, polylinePoints.last.longitude);
             _addMarker(endPoint, info: 'End Location');
@@ -256,6 +257,25 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         );
       },
       icon: BitmapDescriptor.defaultMarker,
+    );
+
+    setState(() {
+      _markers.add(marker);
+    });
+  }
+
+  void _addMarkerForEmergency(LatLng point, {String? info}) async {
+    final markerIdForEmergency = 'marker_${_markerIdCounterForEmergecy++}';
+    final BitmapDescriptor emergencyIcon =
+        await BitmapDescriptor.fromAssetImage(
+            ImageConfiguration(size: Size(48, 48)), 'assets/plus_icon.png');
+
+    final Marker marker = Marker(
+      markerId: MarkerId(markerIdForEmergency),
+      position: point,
+      infoWindow: InfoWindow(title: info),
+      onTap: () {},
+      icon: emergencyIcon,
     );
 
     setState(() {
