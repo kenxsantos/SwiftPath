@@ -9,7 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:swiftpath/services/map_services.dart';
-// import 'package:location/location.dart';
+import 'package:logger/logger.dart';
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -22,6 +22,11 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
+
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
+
   final List<Map<String, dynamic>> _geofences = [];
   late Position position;
   final Set<Polyline> _polylines = <Polyline>{};
@@ -128,10 +133,10 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
         _reports = matchingReports;
         _loading = false;
       });
-      print(
+      logger.i(
           'Matching incident reports fetched successfully: ${_reports.length} reports found.');
     } else {
-      print('Failed to fetch geofences from Roam.ai: ${response.body}');
+      logger.e('Failed to fetch geofences from Roam.ai: ${response.body}');
       setState(() {
         _loading = false;
       });
@@ -201,7 +206,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                             report['address'],
                             'Manila',
                           );
-                          print(directions);
+                          logger.f(directions);
                           Navigator.pushNamed(
                             context,
                             '/show-routes',
@@ -413,20 +418,20 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
         };
 
         await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
-        print('Moving geofence created and data stored successfully.');
+        logger.i('Moving geofence created and data stored successfully.');
         _showDialog('Success', 'Geofence created successfully.');
       } else {
-        print('Error creating moving geofence: ${response.body}');
+        logger.e('Error creating moving geofence: ${response.body}');
         _showDialog('Error', 'Failed to create geofence.');
       }
     } catch (e) {
-      print('Error creating moving geofence: $e');
+      logger.e('Error creating moving geofence: $e');
       _showDialog('Error', 'An error occurred while creating the geofence.');
     }
   }
 
   void _showDialog(String title, String message) {
-    print('$title: $message');
+    logger.i('$title: $message');
   }
 
   Future<void> _createTrip(double longitude, double latitude) async {
@@ -453,11 +458,12 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     );
     await _createMovingGeofence();
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print("Trip created successfully: ${response.body}");
+      logger.i("Trip created successfully: ${response.body}");
     } else {
-      print("Failed to create trip: ${response.statusCode}, ${response.body}");
+      logger
+          .e("Failed to create trip: ${response.statusCode}, ${response.body}");
     }
 
-    print('Latitude: $latitude, Longitude: $longitude');
+    logger.f('Latitude: $latitude, Longitude: $longitude');
   }
 }

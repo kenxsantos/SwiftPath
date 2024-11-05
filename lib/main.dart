@@ -24,10 +24,14 @@ import 'package:swiftpath/pages/dashboard_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:roam_flutter/roam_flutter.dart';
+import 'package:logger/logger.dart';
 
 SharedPreferences? prefs;
 
 void main() async {
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
@@ -37,11 +41,10 @@ void main() async {
       dotenv.env['ROAM_AI_PUBLISHABLE_KEY'] ?? '';
   if (roamAiPublishableKey.isNotEmpty) {
     Roam.initialize(publishKey: roamAiPublishableKey);
-    print('Roam SDK initialized');
+    logger.d('Roam SDK initialized');
   } else {
-    print('Roam SDK initialization failed: API key is missing');
+    logger.e('Roam SDK initialization failed: API key is missing');
   }
-  // Roam.initialize(publishKey: roam_ai_api_key);
   runApp(const ProviderScope(child: MyApp()));
 }
 
