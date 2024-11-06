@@ -13,6 +13,7 @@ import 'package:swiftpath/components/searchBar.dart';
 import 'package:http/http.dart' as http;
 import 'package:swiftpath/services/map_services.dart';
 import 'package:uuid/uuid.dart';
+import 'package:logger/logger.dart';
 
 class ShowRoutes extends ConsumerStatefulWidget {
   const ShowRoutes({
@@ -36,7 +37,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   );
   bool showAutoCompleteSearchBar = true;
 
-  final Set<Marker> _markers = <Marker>{};
+  final Set<Marker> _markersForDestination = <Marker>{};
+  final Set<Marker> _markersForEmergency = <Marker>{};
+  // Set<Marker> get allMarkers =>
+  //     _markersForDestination.union(_markersForEmergency);
   final Set<Polyline> _polylines = <Polyline>{};
   final Set<Circle> _circles = <Circle>{};
   int _markerIdCounter = 1;
@@ -56,6 +60,9 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   bool getDirections = false;
   var uuid = const Uuid();
   String _sessionToken = '122344';
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
   @override
   void initState() {
     super.initState();
@@ -72,7 +79,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
             _addPolyline(polylinePoints);
             final startPoint = LatLng(
                 polylinePoints.first.latitude, polylinePoints.first.longitude);
-            _addMarkerForEmergency(startPoint, info: 'Start Location');
+            _addMarker(startPoint, info: 'Start Location');
             final endPoint = LatLng(
                 polylinePoints.last.latitude, polylinePoints.last.longitude);
             _addMarker(endPoint, info: 'End Location');
@@ -99,7 +106,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                       mapType: MapType.normal,
                       onMapCreated: (controller) =>
                           _controller.complete(controller),
-                      markers: _markers,
+                      markers: _markersForDestination,
                       polylines: _polylines,
                       circles: _circles,
                       onCameraMove: (position) =>
@@ -213,6 +220,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     final marker = Marker(
       markerId: MarkerId(markerId),
       position: point,
+      icon: BitmapDescriptor.defaultMarker,
       onTap: () {
         showModalBottomSheet(
           context: context,
@@ -231,11 +239,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () async {
-                      print(info);
+                      logger.i(info);
                       Position position = await getCurrentUserLocation();
-                      var address =
-                          await _getAddressFromLatLng(14.4964995, 120.9996993);
-                      print(address);
+                      var address = await _getAddressFromLatLng(
+                          position.latitude, position.longitude);
                       var directions =
                           await MapServices().getDirections(address, info!);
                       gotoPlace(
@@ -256,21 +263,20 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           },
         );
       },
-      icon: BitmapDescriptor.defaultMarker,
     );
 
     setState(() {
-      _markers.add(marker);
+      _markersForDestination.add(marker);
     });
   }
 
   void _addMarkerForEmergency(LatLng point, {String? info}) async {
     final markerIdForEmergency = 'marker_${_markerIdCounterForEmergecy++}';
-    final BitmapDescriptor emergencyIcon =
-        await BitmapDescriptor.fromAssetImage(
-            ImageConfiguration(size: Size(48, 48)), 'assets/plus_icon.png');
+    final BitmapDescriptor emergencyIcon = await BitmapDescriptor.asset(
+        const ImageConfiguration(size: Size(48, 48)),
+        'assets/images/emergency_car_icon.png');
 
-    final Marker marker = Marker(
+    final marker = Marker(
       markerId: MarkerId(markerIdForEmergency),
       position: point,
       infoWindow: InfoWindow(title: info),
@@ -279,7 +285,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     );
 
     setState(() {
-      _markers.add(marker);
+      _markersForDestination.add(marker);
     });
   }
 
