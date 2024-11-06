@@ -438,39 +438,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     logger.i('$title: $message');
   }
 
-  // Future<void> _createTrip(double longitude, double latitude) async {
-  //   Position position = await _getCurrentPosition();
-
-  //   final Map<String, dynamic> geofenceData = {
-  //     "user_id": "67160b86c45da22b6c686977",
-  //     "is_started": true,
-  //     "origins": [
-  //       [position.longitude, position.latitude]
-  //     ],
-  //     "destinations": [
-  //       [longitude, latitude]
-  //     ]
-  //   };
-
-  //   final response = await http.post(
-  //     Uri.parse('https://api.roam.ai/v1/api/trips/'),
-  //     headers: {
-  //       'Api-key': "10f984325931446ea8e54d6a76c44037",
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: jsonEncode(geofenceData),
-  //   );
-  //   await _createMovingGeofence();
-  //   if (response.statusCode == 200 || response.statusCode == 201) {
-  //     logger.i("Trip created successfully: ${response.body}");
-  //   } else {
-  //     logger
-  //         .e("Failed to create trip: ${response.statusCode}, ${response.body}");
-  //   }
-
-  //   logger.f('Latitude: $latitude, Longitude: $longitude');
-  // }
-
   Future<void> _createTrip(double longitude, double latitude) async {
     try {
       // Create a trip stop with the given latitude and longitude
