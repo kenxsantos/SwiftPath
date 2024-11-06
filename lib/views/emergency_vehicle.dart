@@ -223,7 +223,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                           double longitude = report['longitude'];
                           double latitude = report['latitude'];
                           await _createTrip(longitude, latitude);
-                          // await _startTrip();
+                          await _startTrip();
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
