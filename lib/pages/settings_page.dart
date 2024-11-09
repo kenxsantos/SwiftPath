@@ -123,6 +123,15 @@ class _SettingsPageState extends State<SettingsPage> {
               'Create Trip',
               style: TextStyle(color: Colors.black87),
             ),
+            leading: const Icon(Icons.more),
+            title: const Text('Show Routes'),
+            onTap: () {
+              Navigator.pushNamed(context, '/show-routes');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.more),
+            title: const Text('Create Trip'),
             onTap: () {
               _createTrip();
             },

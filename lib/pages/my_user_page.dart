@@ -167,7 +167,7 @@ class _MyUsersPageState extends State<MyUsersPage> {
                   }
                 }),
             ElevatedButton(
-                child: Text('Get Current Location'),
+                child: const Text('Get Current Location'),
                 onPressed: () async {
                   setState(() {
                     myLocation = "fetching location..";

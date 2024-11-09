@@ -5,6 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:logger/logger.dart';
 
 class IncidentReportPage extends StatefulWidget {
   const IncidentReportPage({super.key});
@@ -14,6 +17,13 @@ class IncidentReportPage extends StatefulWidget {
 }
 
 class _IncidentReportPageState extends State<IncidentReportPage> {
+  final LocationSettings locationSettings = const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    distanceFilter: 100,
+  );
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -46,7 +56,188 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   }
 
   Future<void> _reportIncident() async {
-    // Dummy function for handling incident reporting
+    if (_isRequestInProgress) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true; // Start loading when the process begins
+      _isRequestInProgress = true; // Indicate a request is in progress
+    });
+
+    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+    Position position;
+
+    try {
+      position = await _getCurrentLocation();
+    } catch (e) {
+      logger.e('Error getting location: $e');
+      _handleError();
+      return;
+    }
+
+    String address;
+    try {
+      address =
+          await _getAddressFromLatLng(position.latitude, position.longitude);
+    } catch (e) {
+      logger.e('Error getting address: $e');
+      _handleError();
+      return;
+    }
+
+    // Check if required fields are filled
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _detailsController.text.isEmpty ||
+        _imageUrl == null) {
+      _showDialog('Required Fields', 'Please fill all required fields.');
+      _handleError();
+      return;
+    }
+
+    final int incidentKey = _generateIncidentKey();
+    final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
+    try {
+      final bool isGeofenceCreated = await _createGeofence(
+        position,
+        roamAiApiKey,
+        dbRef,
+        incidentKey,
+        address,
+      );
+
+      if (isGeofenceCreated) {
+        logger.i('Geofence created and stored in Firebase successfully!');
+        _showDialog('Success', 'Incident reported successfully!');
+
+        // Clear form fields
+        _detailsController.clear();
+        _imageUrl = null;
+        _image = null;
+      }
+    } catch (e) {
+      logger.e('Error creating geofence: $e');
+      _showDialog('Error', 'An error occurred while creating the geofence.');
+    } finally {
+      _handleError(); // Reset loading state
+    }
+  }
+
+  Future<bool> _createGeofence(Position position, String apiKey,
+      DatabaseReference dbRef, int incidentKey, String address) async {
+    final Map<String, dynamic> geofenceData = {
+      "coordinates": [position.longitude, position.latitude],
+      "geometry_radius": 500,
+      "description": "Incident Location",
+      "tag": "Incident Report",
+      "metadata": {},
+      "user_ids": ["6bda16edea01848b3b419163"], // Example user ID
+      "group_ids": ["5cda16edea00845b3b419173"], // Example group ID
+      "is_enabled": [true, "2021-06-10T18:45:00", "2021-06-10T19:29:00"]
+    };
+
+    final response = await http.post(
+      Uri.parse('https://api.roam.ai/v1/api/geofence/'),
+      headers: {
+        'Api-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(geofenceData),
+    );
+
+    if (response.statusCode == 201) {
+      final Map<String, dynamic> responseData =
+          jsonDecode(response.body)['data'];
+
+      // Store geofence data in Firebase
+      await dbRef.child('geofences').push().set({
+        "geofence_id": responseData["geofence_id"],
+        "geometry_type": responseData["geometry_type"],
+        "geometry_radius": responseData["geometry_radius"],
+        "geometry_center": responseData["geometry_center"],
+        "is_enabled": responseData["is_enabled"],
+        "description": responseData["description"],
+        "tag": responseData["tag"],
+        "metadata": responseData["metadata"],
+        "user_ids": responseData["user_ids"],
+        "group_ids": responseData["group_ids"],
+        "is_deleted": responseData["is_deleted"],
+        "created_at": responseData["created_at"],
+        "updated_at": responseData["updated_at"],
+      });
+
+      // Push incident report data to Firebase
+      await dbRef.child('incident-reports/').push().set({
+        'geofence_id': responseData["geofence_id"],
+        'incident_key': incidentKey,
+        'image_url': _imageUrl,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'address': address,
+        'details': _detailsController.text,
+        'reporter_name': _nameController.text,
+        'reporter_email': _emailController.text,
+        'status': 'Pending',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      return true;
+    } else {
+      logger.e('Failed to create geofence: ${response.body}');
+      return false;
+    }
+  }
+
+  int _generateIncidentKey() {
+    final Random random = Random();
+    int key1 = random.nextInt(900000) + 100000;
+    int key2 = random.nextInt(9000) + 1000;
+    return int.parse('$key1$key2');
+  }
+
+  void _handleError() {
+    setState(() {
+      _isLoading = false;
+      _isRequestInProgress = false;
+    });
+  }
+
+  void _showDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<String> _getAddressFromLatLng(
+      double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
+      Placemark place = placemarks[0];
+
+      // Construct a readable address from the placemark data
+      String address =
+          "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
+      return address;
+    } catch (e) {
+      logger.e(e);
+      return "Address not available";
+    }
   }
 
   @override

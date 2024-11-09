@@ -17,7 +17,8 @@ class TextToSpeech extends StatefulWidget {
 }
 
 class _TextToSpeechState extends State<TextToSpeech> {
-  final SpeechToText _speechToText = SpeechToText();
+  final SpeechToText speechToText = SpeechToText();
+  bool speechEnabled = false;
 
   @override
   void initState() {
@@ -26,16 +27,17 @@ class _TextToSpeechState extends State<TextToSpeech> {
   }
 
   void _initSpeech() async {
+    speechEnabled = await speechToText.initialize();
     setState(() {});
   }
 
   void _startListening() async {
-    await _speechToText.listen(onResult: _onSpeechResult);
+    await speechToText.listen(onResult: _onSpeechResult);
     setState(() {});
   }
 
   void _stopListening() async {
-    await _speechToText.stop();
+    await speechToText.stop();
     setState(() {});
   }
 
@@ -43,7 +45,7 @@ class _TextToSpeechState extends State<TextToSpeech> {
     setState(() {
       widget.textController.text =
           result.recognizedWords; // Populate the search bar
-      if (!_speechToText.isListening && result.recognizedWords.isNotEmpty) {
+      if (!speechToText.isListening && result.recognizedWords.isNotEmpty) {
         widget
             .onSpeechResult(result.recognizedWords); // Trigger search function
       }
@@ -53,10 +55,9 @@ class _TextToSpeechState extends State<TextToSpeech> {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed:
-          _speechToText.isNotListening ? _startListening : _stopListening,
+      onPressed: speechToText.isNotListening ? _startListening : _stopListening,
       tooltip: 'Listen',
-      icon: Icon(_speechToText.isNotListening ? Icons.mic_off : Icons.mic),
+      icon: Icon(speechToText.isNotListening ? Icons.mic_off : Icons.mic),
     );
   }
 }

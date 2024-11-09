@@ -67,6 +67,7 @@ dependencies:
   speech_to_text: ^7.0.0
   roam_flutter: ^0.1.6
   permission_handler: ^11.3.1
+  logger: ^2.4.0
 
 
 dev_dependencies:

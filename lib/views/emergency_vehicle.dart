@@ -1,11 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
-
+import 'package:flutter/services.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-// import 'package:location/location.dart';
+import 'package:roam_flutter/roam_flutter.dart';
+import 'package:roam_flutter/trips_v2/RoamTrip.dart';
+import 'package:roam_flutter/trips_v2/request/RoamTripStops.dart';
+import 'package:swiftpath/logger.dart';
+import 'package:swiftpath/services/map_services.dart';
+import 'package:logger/logger.dart';
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -18,7 +27,19 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
+  String? myTrip;
+  String? tripId;
+  String? response;
+
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
+
+  final List<Map<String, dynamic>> _geofences = [];
   late Position position;
+  final Set<Polyline> _polylines = <Polyline>{};
+  int polylineIdCounter = 1;
+  final Completer<GoogleMapController> _controller = Completer();
 
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -28,30 +49,21 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   @override
   void initState() {
     super.initState();
-
     _getUserLocationAndFetchReports();
   }
 
   Future<void> _getUserLocationAndFetchReports() async {
-    // Get the current position of the user
-    position = await _determinePosition();
-
-    // Fetch reports based on the user's current location
-    _fetchReports(
-        120.9983752, 14.5976671, 10); // Radius in kilometers
+    position = await _getCurrentPosition();
+    _fetchReports(position.longitude, position.latitude, 10);
   }
 
-  Future<Position> _determinePosition() async {
+  Future<Position> _getCurrentPosition() async {
     bool serviceEnabled;
     LocationPermission permission;
-
-    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       return Future.error('Location services are disabled.');
     }
-
-    // Check for location permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -122,15 +134,17 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
         _reports = matchingReports;
         _loading = false;
       });
-      print(
+      logger.i(
           'Matching incident reports fetched successfully: ${_reports.length} reports found.');
     } else {
-      print('Failed to fetch geofences from Roam.ai: ${response.body}');
+      logger.e('Failed to fetch geofences from Roam.ai: ${response.body}');
       setState(() {
         _loading = false;
       });
     }
   }
+
+//initial marker count value
 
   void _showReportDetailsModal(
       BuildContext context, Map<String, dynamic> report) {
@@ -186,18 +200,39 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () {
-                          _createMovingGeofence();
+                        onPressed: () async {
+                          position = await _getCurrentPosition();
+                          var address = await _getAddressFromLatLng(
+                              position.latitude, position.longitude);
+                          var directions = await MapServices().getDirections(
+                            address,
+                            report['address'],
+                          );
+                          logger.f(directions);
+                          Navigator.pushNamed(
+                            context,
+                            '/show-routes',
+                            arguments: {
+                              'start_location': directions['start_location'],
+                              'end_location': directions['end_location'],
+                              'setPolyline': directions['polyline_decoded'],
+                            },
+                          );
+
+                          double longitude = report['longitude'];
+                          double latitude = report['latitude'];
+                          await _createTrip(longitude, latitude);
+                          await _startTrip();
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 10),
-                          backgroundColor: Colors.red, // Set the button color
+                          backgroundColor: Colors.red,
                         ),
                         child: const Text(
                           'Take Action',
                           style: TextStyle(
-                            color: Colors.white, // Set the text color
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -386,20 +421,78 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
         };
 
         await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
-        print('Moving geofence created and data stored successfully.');
+        logger.i('Moving geofence created and data stored successfully.');
         _showDialog('Success', 'Geofence created successfully.');
       } else {
-        print('Error creating moving geofence: ${response.body}');
+        logger.e('Error creating moving geofence: ${response.body}');
         _showDialog('Error', 'Failed to create geofence.');
       }
     } catch (e) {
-      print('Error creating moving geofence: $e');
+      logger.e('Error creating moving geofence: $e');
       _showDialog('Error', 'An error occurred while creating the geofence.');
     }
   }
 
   void _showDialog(String title, String message) {
-    // Implement a dialog function to show success/error messages
-    print('$title: $message'); // Simple console print for now
+    logger.i('$title: $message');
+  }
+
+  Future<void> _createTrip(double longitude, double latitude) async {
+    try {
+      // Create a trip stop with the given latitude and longitude
+      RoamTripStops stop = RoamTripStops(600, [longitude, latitude]);
+      RoamTrip roamTrip = RoamTrip(isLocal: true);
+      roamTrip.stop?.add(stop);
+
+      await Roam.createTrip(roamTrip, ({roamTripResponse}) {
+        String responseString = jsonEncode(roamTripResponse?.toJson());
+        logger.d('Create online trip response: $responseString');
+        setState(() {
+          tripId = roamTripResponse!.tripDetails!.id;
+          response = 'Create online trip response: $responseString';
+          logger.f(jsonEncode(roamTripResponse.toJson()));
+        });
+      }, ({error}) {
+        String errorString = jsonEncode(error?.toJson());
+        logger.d(errorString);
+      });
+    } catch (e) {
+      logger.e('Error creating trip: $e');
+    }
+  }
+
+  Future<void> _startTrip() async {
+    try {
+      await Roam.startTrip(({roamTripResponse}) {
+        String responseString = jsonEncode(roamTripResponse?.toJson());
+        logger.d('Start trip response: $responseString');
+        setState(() {
+          tripId = roamTripResponse?.tripDetails?.id;
+          response = 'Start trip response: $responseString';
+        });
+      }, ({error}) {
+        String errorString = jsonEncode(error?.toJson());
+        logger.d(errorString);
+      });
+    } catch (e) {
+      logger.e('Error starting trip: $e');
+    }
+  }
+
+  Future<String> _getAddressFromLatLng(
+      double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
+      Placemark place = placemarks[0];
+
+      // Construct a readable address from the placemark data
+      String address =
+          "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
+      return address;
+    } catch (e) {
+      logger.e(e);
+      return "Address not available";
+    }
   }
 }
