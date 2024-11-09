@@ -4,52 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:swiftpath/components/validation.dart';
+
 class HomePage extends StatelessWidget {
   HomePage({super.key});
   static String id = 'home_page';
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    try {
-      final GoogleUser = await _googleSignIn.signIn();
-      if (GoogleUser == null) {
-        return;
-      }
-      final GoogleAuth = await GoogleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: GoogleAuth.accessToken,
-        idToken: GoogleAuth.idToken,
-      );
-      await _auth.signInWithCredential(credential);
-      Navigator.pushReplacementNamed(context, '/splash-screen');
-    } catch (e) {
-      print('Sign in failed: $e');
-      _showErrorDialog(context, e.toString());
-    }
-  }
-
-  void _showErrorDialog(BuildContext context, String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Sign In Error'),
-          content: Text('An error occurred: $error'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<bool> _checkIfLoggedIn() async {
     final user = _auth.currentUser;
@@ -125,7 +87,11 @@ class HomePage extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               IconButton(
-                                onPressed: () => _signInWithGoogle(context),
+                                onPressed: () =>
+                                    AuthValidation.signInWithGoogle(
+                                        context: context,
+                                        auth: _auth,
+                                        googleSignIn: _googleSignIn),
                                 icon: CircleAvatar(
                                   radius: 25,
                                   backgroundColor: Colors.transparent,

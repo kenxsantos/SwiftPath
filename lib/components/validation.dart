@@ -1,11 +1,15 @@
+import 'dart:convert';
+
+import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 class AuthValidation {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   static void showAlert({
     required BuildContext context,
     required String title,
@@ -75,18 +79,14 @@ class AuthValidation {
     };
 
     try {
-      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      Roam.createUser(
+        description: 'Creating user for: $email',
+        callBack: ({user}) {
+          print(user);
+          Roam.offlineTracking(true);
+          Roam.allowMockLocation(allow: true);
+        },
       );
-      // String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-
-      // Store user details in Realtime Database
-      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-      await dbRef.child('users/${userCredential.user?.uid}').set({
-        'email': email,
-        'password': password, // Store the hashed password
-      });
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
@@ -148,15 +148,83 @@ class AuthValidation {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
+  static Future<void> signInWithGoogle(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
     try {
-      if (_auth.currentUser?.providerData.any((provider) =>
-              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
-          false) {
-        await _googleSignIn.signOut();
+      final GoogleUser = await googleSignIn.signIn();
+      if (GoogleUser == null) {
+        // User cancelled the sign-in
+        return;
       }
 
-      await _auth.signOut();
+      final GoogleAuth = await GoogleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: GoogleAuth.accessToken,
+        idToken: GoogleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      UserCredential userCredential =
+          await auth.signInWithCredential(credential);
+      User? userData = userCredential.user;
+
+      if (userData == null) {
+        print('Error: User credential is null.');
+        return;
+      }
+
+      Roam.createUser(
+          description: 'Creating user for: $userData',
+          callBack: ({user}) {
+            if (user != null) {
+              // If user is successfully created
+              print(user);
+
+              // Start offline tracking and allow mock location
+              Roam.offlineTracking(true);
+              Roam.allowMockLocation(allow: true);
+            }
+          });
+
+      // Navigate to the splash screen after successful sign-in
+      Navigator.pushReplacementNamed(context, '/splash-screen');
+    } catch (e) {
+      print('Sign in failed: $e');
+      _showErrorDialog(context, e.toString());
+    }
+  }
+
+  static void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> signOut(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
+    try {
+      if (auth.currentUser?.providerData.any((provider) =>
+              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
+          false) {
+        await googleSignIn.signOut();
+      }
+
+      await auth.signOut();
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
       print('Sign out failed: $e');

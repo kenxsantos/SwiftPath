@@ -99,7 +99,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   _saving = false;
                                   _resetForm();
                                   Navigator.pushReplacementNamed(
-                                      context, '/login');
+                                      context, '/splash-screen');
                                 });
                               },
                               onFailure: () {

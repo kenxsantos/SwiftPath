@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swiftpath/pages/edit_profile_page.dart';
+import 'package:swiftpath/pages/my_location_tracking_page.dart';
+import 'package:swiftpath/pages/my_subscription_page.dart';
+import 'package:swiftpath/pages/my_trips_location.dart';
+import 'package:swiftpath/pages/my_user_page.dart';
 import 'package:swiftpath/pages/nearest_facility.dart';
 import 'package:swiftpath/pages/report_history_page.dart';
 import 'package:swiftpath/pages/route_history_page.dart';
+import 'package:swiftpath/pages/show_routes.dart';
+import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 import 'package:swiftpath/pages/incident_report.dart';
@@ -17,14 +23,28 @@ import 'package:swiftpath/pages/signup_page.dart';
 import 'package:swiftpath/pages/dashboard_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
+import 'package:logger/logger.dart';
 
 SharedPreferences? prefs;
+
 void main() async {
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await dotenv.load(fileName: ".env");
+  final String roamAiPublishableKey =
+      dotenv.env['ROAM_AI_PUBLISHABLE_KEY'] ?? '';
+  if (roamAiPublishableKey.isNotEmpty) {
+    Roam.initialize(publishKey: roamAiPublishableKey);
+    logger.d('Roam SDK initialized');
+  } else {
+    logger.e('Roam SDK initialization failed: API key is missing');
+  }
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -54,10 +74,20 @@ class MyApp extends StatelessWidget {
         '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
-        '/nearest-facility': (context) => const NearestFacility(
-              latitude: 40.712776, // Replace with dynamic latitude
-              longitude: -74.005974, // Replace with dynamic longitude
+        '/emergency-vehicles': (context) => const EmergencyVehicles(),
+        '/my-user': (context) => const MyUsersPage(),
+        '/my-location-tracking': (context) =>
+            const MyLocationTrackingPage(title: "Location Tracking"),
+        '/my-subscription': (context) =>
+            const MySubcriptionPage(title: "Subscription Page"),
+        '/my-trips': (context) => const MyItemsPage(
+              title: "My Trips Page",
             ),
+        '/show-routes': (context) => const ShowRoutes(),
+        // '/nearest-facility': (context) => const NearestFacility(
+        //       latitude: 40.712776, // Replace with dynamic latitude
+        //       longitude: -74.005974, // Replace with dynamic longitude
+        //     ),
       },
     );
   }

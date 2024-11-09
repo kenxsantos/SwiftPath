@@ -7,18 +7,18 @@ class TextToSpeech extends StatefulWidget {
   final Function(String) onSpeechResult; // Pass search function as callback
 
   const TextToSpeech({
-    Key? key,
+    super.key,
     required this.textController,
     required this.onSpeechResult,
-  }) : super(key: key);
+  });
 
   @override
   _TextToSpeechState createState() => _TextToSpeechState();
 }
 
 class _TextToSpeechState extends State<TextToSpeech> {
-  SpeechToText _speechToText = SpeechToText();
-  bool _speechEnabled = false;
+  final SpeechToText speechToText = SpeechToText();
+  bool speechEnabled = false;
 
   @override
   void initState() {
@@ -27,17 +27,17 @@ class _TextToSpeechState extends State<TextToSpeech> {
   }
 
   void _initSpeech() async {
-    _speechEnabled = await _speechToText.initialize();
+    speechEnabled = await speechToText.initialize();
     setState(() {});
   }
 
   void _startListening() async {
-    await _speechToText.listen(onResult: _onSpeechResult);
+    await speechToText.listen(onResult: _onSpeechResult);
     setState(() {});
   }
 
   void _stopListening() async {
-    await _speechToText.stop();
+    await speechToText.stop();
     setState(() {});
   }
 
@@ -45,7 +45,7 @@ class _TextToSpeechState extends State<TextToSpeech> {
     setState(() {
       widget.textController.text =
           result.recognizedWords; // Populate the search bar
-      if (!_speechToText.isListening && result.recognizedWords.isNotEmpty) {
+      if (!speechToText.isListening && result.recognizedWords.isNotEmpty) {
         widget
             .onSpeechResult(result.recognizedWords); // Trigger search function
       }
@@ -55,10 +55,9 @@ class _TextToSpeechState extends State<TextToSpeech> {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed:
-          _speechToText.isNotListening ? _startListening : _stopListening,
+      onPressed: speechToText.isNotListening ? _startListening : _stopListening,
       tooltip: 'Listen',
-      icon: Icon(_speechToText.isNotListening ? Icons.mic_off : Icons.mic),
+      icon: Icon(speechToText.isNotListening ? Icons.mic_off : Icons.mic),
     );
   }
 }

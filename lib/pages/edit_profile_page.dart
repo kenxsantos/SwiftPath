@@ -30,12 +30,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      List<String> nameParts = user.displayName!.split(' ');
-
-      String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-      String lastName =
-          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
       _emailController.text = user.email ?? "";
       _fullNameController.text = user.displayName ?? "";
     }
@@ -163,7 +157,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           },
           icon: const Icon(
             Icons.arrow_back_ios_outlined,
-            color: Colors.blue,
+            color: Color.fromARGB(255, 224, 59, 59),
             size: 24,
           ),
         ),
@@ -178,7 +172,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: const Text(
                 'Save',
                 style: TextStyle(
-                  color: Colors.blue,
+                  color: Color.fromARGB(255, 224, 59, 59),
                   fontSize: 15,
                 ),
               ),
