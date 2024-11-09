@@ -53,8 +53,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   Future<void> _getUserLocationAndFetchReports() async {
-    position = await _getCurrentPosition();
-    _fetchReports(position.longitude, position.latitude, 10);
+    // position = await _getCurrentPosition();
+    _fetchReports(120.9878531, 14.5963622, 10);
   }
 
   Future<Position> _getCurrentPosition() async {
@@ -81,7 +81,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   // Fetch user's reports from Firebase and Roam.ai
-  Future<void> _fetchReports(   
+  Future<void> _fetchReports(
       double latitude, double longitude, double radius) async {
     setState(() {
       _loading = true;
@@ -221,8 +221,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                           double longitude = report['longitude'];
                           double latitude = report['latitude'];
-                          await _createTrip(longitude, latitude);
-                          await _startTrip();
+                          // await _createTrip(longitude, latitude);
+                          // await _startTrip();
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
