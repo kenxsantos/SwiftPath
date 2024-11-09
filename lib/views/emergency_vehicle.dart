@@ -27,7 +27,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _reports = [];
   bool _loading = true;
-
   String? myTrip;
   String? tripId;
   String? response;
@@ -82,7 +81,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   // Fetch user's reports from Firebase and Roam.ai
-  Future<void> _fetchReports(
+  Future<void> _fetchReports(   
       double latitude, double longitude, double radius) async {
     setState(() {
       _loading = true;
