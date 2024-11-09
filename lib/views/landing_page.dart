@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:swiftpath/pages/home_page.dart';
+import 'package:swiftpath/views/home_page.dart';
 
 void main() => runApp(const MaterialApp(home: LandingPage()));
 

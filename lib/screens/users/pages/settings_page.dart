@@ -21,7 +21,8 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255), // Background color for AppBar
+        backgroundColor: const Color.fromARGB(
+            255, 255, 255, 255), // Background color for AppBar
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,7 +43,8 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {
               Navigator.pushNamed(context, '/edit-profile');
             },
-            leading: const Icon(Icons.person, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.person,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Profile',
               style: TextStyle(color: Colors.black87),
@@ -52,7 +54,8 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {
               Navigator.pushNamed(context, '/route-history');
             },
-            leading: const Icon(Icons.history, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.history,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Route History',
               style: TextStyle(color: Colors.black87),
@@ -62,23 +65,26 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {
               Navigator.pushNamed(context, '/report-history');
             },
-            leading: const Icon(Icons.pending_actions_outlined, color:Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.pending_actions_outlined,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Report History',
               style: TextStyle(color: Colors.black87),
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.logout, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.logout,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Logout',
               style: TextStyle(color: Colors.black87),
             ),
             onTap: () => AuthValidation.signOut(
-              context: context, auth: _auth, googleSignIn: _googleSignIn),
+                context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
           ListTile(
-            leading: const Icon(Icons.more, color: Color.fromARGB(255, 224, 59, 59)),
+            leading:
+                const Icon(Icons.more, color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'My User',
               style: TextStyle(color: Colors.black87),
@@ -88,7 +94,8 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.location_on, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.location_on,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'My Location Tracking',
               style: TextStyle(color: Colors.black87),
@@ -98,7 +105,8 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.subscriptions, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.subscriptions,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'My Subscription',
               style: TextStyle(color: Colors.black87),
@@ -108,7 +116,8 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.trip_origin, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.trip_origin,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'My Trips',
               style: TextStyle(color: Colors.black87),
@@ -118,13 +127,12 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.add_circle_outline, color: Color.fromARGB(255, 224, 59, 59)),
+            leading: const Icon(Icons.add_circle_outline,
+                color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Create Trip',
               style: TextStyle(color: Colors.black87),
             ),
-            leading: const Icon(Icons.more),
-            title: const Text('Show Routes'),
             onTap: () {
               Navigator.pushNamed(context, '/show-routes');
             },
