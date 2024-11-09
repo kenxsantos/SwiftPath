@@ -1,5 +1,13 @@
+import 'dart:convert';
+
+import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 class AuthValidation {
   static void showAlert({
@@ -71,9 +79,13 @@ class AuthValidation {
     };
 
     try {
-      await auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      Roam.createUser(
+        description: 'Creating user for: $email',
+        callBack: ({user}) {
+          print(user);
+          Roam.offlineTracking(true);
+          Roam.allowMockLocation(allow: true);
+        },
       );
       onSuccess();
     } catch (e) {
@@ -133,6 +145,102 @@ class AuthValidation {
         desc: errorMessage,
       );
       onFailure();
+    }
+  }
+
+  static Future<void> signInWithGoogle(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
+    try {
+      final GoogleUser = await googleSignIn.signIn();
+      if (GoogleUser == null) {
+        // User cancelled the sign-in
+        return;
+      }
+
+      final GoogleAuth = await GoogleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: GoogleAuth.accessToken,
+        idToken: GoogleAuth.idToken,
+      );
+
+      // Sign in to Firebase
+      UserCredential userCredential =
+          await auth.signInWithCredential(credential);
+      User? userData = userCredential.user;
+
+      if (userData == null) {
+        print('Error: User credential is null.');
+        return;
+      }
+
+      Roam.createUser(
+          description: 'Creating user for: $userData',
+          callBack: ({user}) {
+            if (user != null) {
+              // If user is successfully created
+              print(user);
+
+              // Start offline tracking and allow mock location
+              Roam.offlineTracking(true);
+              Roam.allowMockLocation(allow: true);
+            }
+          });
+
+      // Navigate to the splash screen after successful sign-in
+      Navigator.pushReplacementNamed(context, '/splash-screen');
+    } catch (e) {
+      print('Sign in failed: $e');
+      _showErrorDialog(context, e.toString());
+    }
+  }
+
+  static void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> signOut(
+      {required BuildContext context,
+      required FirebaseAuth auth,
+      required GoogleSignIn googleSignIn}) async {
+    try {
+      if (auth.currentUser?.providerData.any((provider) =>
+              provider.providerId == GoogleAuthProvider.PROVIDER_ID) ??
+          false) {
+        await googleSignIn.signOut();
+      }
+
+      await auth.signOut();
+      Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      print('Sign out failed: $e');
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: const Text('Failed to sign out. Please try again.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

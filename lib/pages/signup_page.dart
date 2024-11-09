@@ -37,7 +37,7 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const TopScreenImage(screenImageName: 'signup.png'),
+                const TopScreenImage(screenImageName: 'ambulance.png'),
                 Expanded(
                   flex: 2,
                   child: Padding(
@@ -99,7 +99,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   _saving = false;
                                   _resetForm();
                                   Navigator.pushReplacementNamed(
-                                      context, '/login');
+                                      context, '/splash-screen');
                                 });
                               },
                               onFailure: () {

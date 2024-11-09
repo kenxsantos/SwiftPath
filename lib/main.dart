@@ -1,21 +1,51 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // Import the generated file
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swiftpath/pages/edit_profile_page.dart';
+import 'package:swiftpath/pages/my_location_tracking_page.dart';
+import 'package:swiftpath/pages/my_subscription_page.dart';
+import 'package:swiftpath/pages/my_trips_location.dart';
+import 'package:swiftpath/pages/my_user_page.dart';
+import 'package:swiftpath/pages/nearest_facility.dart';
+import 'package:swiftpath/pages/report_history_page.dart';
+import 'package:swiftpath/pages/route_history_page.dart';
+import 'package:swiftpath/pages/show_routes.dart';
+import 'package:swiftpath/views/emergency_vehicle.dart';
+import 'package:swiftpath/views/maps_page.dart';
+import 'package:swiftpath/views/splash_screen.dart';
+import 'package:swiftpath/pages/incident_report.dart';
+import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:swiftpath/pages/landing_page.dart';
 import 'package:swiftpath/pages/home_page.dart';
 import 'package:swiftpath/pages/login_page.dart';
 import 'package:swiftpath/pages/signup_page.dart';
 import 'package:swiftpath/pages/dashboard_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:roam_flutter/roam_flutter.dart';
+import 'package:logger/logger.dart';
+
+SharedPreferences? prefs;
 
 void main() async {
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  final String roamAiPublishableKey =
+      dotenv.env['ROAM_AI_PUBLISHABLE_KEY'] ?? '';
+  if (roamAiPublishableKey.isNotEmpty) {
+    Roam.initialize(publishKey: roamAiPublishableKey);
+    logger.d('Roam SDK initialized');
+  } else {
+    logger.e('Roam SDK initialization failed: API key is missing');
+  }
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -24,12 +54,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'SwiftPath',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
         textTheme: GoogleFonts.poppinsTextTheme(
-          // Using Google Fonts throughout the app
           Theme.of(context).textTheme,
         ),
       ),
@@ -39,7 +67,27 @@ class MyApp extends StatelessWidget {
         '/homepage': (context) => HomePage(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
-        '/dashboard': (context) => DashboardPage(),
+        '/dashboard': (context) => const DashboardPage(),
+        '/edit-profile': (context) => const EditProfilePage(),
+        '/route-history': (context) => const RouteHistoryPage(),
+        '/report-history': (context) => const ReportHistoryPage(),
+        '/maps': (context) => const MapScreen(),
+        '/splash-screen': (context) => const SplashScreen(),
+        '/incident-report': (context) => const IncidentReportPage(),
+        '/emergency-vehicles': (context) => const EmergencyVehicles(),
+        '/my-user': (context) => const MyUsersPage(),
+        '/my-location-tracking': (context) =>
+            const MyLocationTrackingPage(title: "Location Tracking"),
+        '/my-subscription': (context) =>
+            const MySubcriptionPage(title: "Subscription Page"),
+        '/my-trips': (context) => const MyItemsPage(
+              title: "My Trips Page",
+            ),
+        '/show-routes': (context) => const ShowRoutes(),
+        // '/nearest-facility': (context) => const NearestFacility(
+        //       latitude: 40.712776, // Replace with dynamic latitude
+        //       longitude: -74.005974, // Replace with dynamic longitude
+        //     ),
       },
     );
   }
