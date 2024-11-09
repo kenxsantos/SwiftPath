@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:swiftpath/pages/text_to_speech.dart';
+import 'package:swiftpath/components/text_to_speech.dart';
 
 class SearchAutoComplete extends StatelessWidget {
   final ValueNotifier<String> searchAutocompleteAddr;
