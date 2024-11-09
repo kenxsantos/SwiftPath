@@ -278,9 +278,9 @@ class _MyItemsPageState extends State<MyItemsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-        appBar: new AppBar(
-          title: new Text(widget.title),
+    return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
         ),
         body: SingleChildScrollView(
           child: Center(
@@ -516,7 +516,7 @@ class _MyItemsPageState extends State<MyItemsPage> {
                     child: const Text('Update Online Trip'),
                     onPressed: () async {
                       try {
-                        print('update trip id: ' + tripId!);
+                        print('update trip id: ${tripId!}');
                         RoamTrip updateTrip = RoamTrip(tripId: tripId);
                         updateTrip.isLocal = false;
                         updateTrip.description = "test description";
@@ -545,7 +545,7 @@ class _MyItemsPageState extends State<MyItemsPage> {
                     child: const Text('Update Offline Trip'),
                     onPressed: () async {
                       try {
-                        print('update trip id: ' + tripId!);
+                        print('update trip id: ${tripId!}');
                         RoamTrip updateTrip = RoamTrip(tripId: tripId);
                         updateTrip.isLocal = true;
                         updateTrip.description = "test description";

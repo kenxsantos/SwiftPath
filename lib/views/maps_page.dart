@@ -5,16 +5,21 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:fab_circular_menu_plus/fab_circular_menu_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/components/autocomplete_list.dart';
+import 'package:swiftpath/components/destination_autocomplete_list_false.dart';
+import 'package:swiftpath/components/destination_autocomplete_list_true.dart';
+import 'package:swiftpath/components/floating_button.dart';
+import 'package:swiftpath/components/origin_autocomplete_list_true.dart';
+import 'package:swiftpath/components/origin_autocomplete_list_false.dart';
 import 'package:swiftpath/pages/incident_report.dart';
 import 'package:swiftpath/pages/settings_page.dart';
-import 'package:swiftpath/pages/text_to_speech.dart';
+import 'package:swiftpath/components/searchBar.dart';
 import 'package:swiftpath/views/emergency_vehicle.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -22,10 +27,8 @@ import '../models/auto_complete_result.dart';
 import '../services/map_services.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key, required this.origin, required this.destination});
+  const MapScreen({super.key});
 
-  final String? origin;
-  final String? destination;
   @override
   // ignore: library_private_types_in_public_api
 
@@ -38,22 +41,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   TextEditingController _searchEditingController = TextEditingController();
   TextEditingController _autoCompleteSearchEditingController =
       TextEditingController();
-  TextEditingController _originController =
-      TextEditingController(text: "Manila");
+  TextEditingController _originController = TextEditingController();
   TextEditingController _destinationController = TextEditingController();
 
-  bool showsearchbar = false;
   bool showAutoCompleteSearchBar = true;
-  bool noreslt = false;
-  bool originnoreslt = false;
-  bool destinationnorelt = false;
-  bool radiusSlider = false;
-  bool cardTapped = false;
-  bool pressedNear = false;
+  bool noResult = false;
+  bool originNoResult = false;
+  bool destinationNoResult = false;
+
   bool getDirections = false;
   String? myLocation;
 
-  final String google_map_key = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  var tappedPoint;
+
+  final String googleMapKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -63,29 +64,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   ValueNotifier<String> _originAddr = ValueNotifier<String>('');
   ValueNotifier<String> _destinationAddr = ValueNotifier<String>('');
   String tokenKey = '';
-  var tappedPoint;
+
   var radiusValue = 3000.0;
-  List allFavoritePlaces = [];
+
   ValueNotifier<String> _searchAutoCompleteAddr = ValueNotifier<String>('');
   Completer<GoogleMapController> _controller = Completer();
 
-  int polylineIdCounter = 1;
-  Set<Polyline> _polylines = <Polyline>{};
-
-  late PageController _pageController;
-  int prevPage = 0;
-  var tappedPlaceDetail;
-  String placeImg = '';
-  var photoGalleryIndex = 0;
-  bool showBlankCard = false;
-  bool isReviews = true;
-  bool isPhotos = false;
-  var selectedPlaceDetails;
-
   static const CameraPosition _kGooglePlex = CameraPosition(
-    target: LatLng(20.5937, 78.9629),
-    zoom: 4,
+    target: LatLng(14.4964995, 120.9996993),
+    zoom: 10.4746,
   );
+
   CameraPosition _currentCameraPosition = _kGooglePlex;
 
   var uuid = const Uuid();
@@ -100,7 +89,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! Function to get current user location through GPS
-  Future<Position> getcurrentuserlocation() async {
+  Future<Position> getCurrentUserLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -127,7 +116,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     String baseURL =
         'https://maps.googleapis.com/maps/api/place/autocomplete/json';
     String request =
-        '$baseURL?input=$input&key=$google_map_key&sessiontoken=$_sessionToken';
+        '$baseURL?input=$input&key=$googleMapKey&sessiontoken=$_sessionToken';
     var response = await http.get(Uri.parse(request));
     var body = response.body.toString();
     developer.log(body);
@@ -139,11 +128,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-//! Function to set marker on the map upon searching
-//Markers set
   Set<Marker> _markers = <Marker>{};
   Set<Marker> _markersDupe = <Marker>{};
-//initial marker count value
+
   int markerIdCounter = 1;
   void _setMarker(LatLng point, {String? info}) {
     var counter = markerIdCounter++;
@@ -161,6 +148,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 //! Function to set polyline on the map upon searching
+  int polylineIdCounter = 1;
+  Set<Polyline> _polylines = <Polyline>{};
   void _setPolyline(List<PointLatLng> points) {
     final String polylineIdVal = 'polyline_$polylineIdCounter';
 
@@ -187,7 +176,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           strokeColor: Colors.blue,
           strokeWidth: 1));
       getDirections = false;
-      radiusSlider = true;
     });
   }
 
@@ -198,7 +186,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _autoCompleteSearchEditingController.addListener(() {
       onChange(_searchAutoCompleteAddr.value);
     });
-    _originController = TextEditingController(text: "Manila");
+    _originController = TextEditingController();
   }
 
   @override
@@ -240,19 +228,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     onCameraMove: (CameraPosition position) {
                       _currentCameraPosition = position;
                     },
-                    // onTap: (point) {
-                    //   tappedPoint = point;
-                    //   _setCircle(point);
-                    // },
+                    onTap: (point) {
+                      tappedPoint = point;
+                      _setMarker(point);
+                    },
                   )),
-              //!stack if asked autocomplet seachnbar
-              showAutoCompleteSearchBar
-                  ? autocompletesearchbar()
-                  : Container(), // this way also correct
-              //!stack of navigate to user current location using GPS
+              autoCompleteSearchBar(),
               showGPSlocator(),
-              //!Stack to show the autocomplete result
-              //?implemented value Listanble builder without calling setstate() in onchange of textfield
               ValueListenableBuilder(
                 valueListenable: _searchAutoCompleteAddr,
                 builder: (context, value, _) {
@@ -346,8 +328,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             IconButton(
               onPressed: () {
                 setState(() {
-                  showsearchbar = false;
-                  showAutoCompleteSearchBar = false;
+                  showAutoCompleteSearchBar = true;
                   _autoCompleteSearchEditingController.clear();
                   _originController.clear();
                   _destinationController.clear();
@@ -355,10 +336,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   _searchAutoCompleteAddr.value = '';
                   _originAddr.value = '';
                   _destinationAddr.value = '';
-                  //
-                  radiusSlider = false;
-                  pressedNear = false;
-                  cardTapped = false;
+
                   getDirections = true;
                 });
                 if (_polylines.isNotEmpty) {
@@ -385,231 +363,49 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 //! Function for GPS locator in stack
   Positioned showGPSlocator() {
     return Positioned(
-      bottom: MediaQuery.of(context).size.height * 0.15,
-      right: 5,
-      child: FloatingActionButton(
-        onPressed: () async {
-          GoogleMapController controller = await _controller.future;
-          developer.log('pressed');
-          getcurrentuserlocation().then((value) async {
-            await controller.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: LatLng(value.latitude, value.longitude),
-                  zoom: 14.2,
-                ),
-              ),
-            );
-            showAutoCompleteSearchBar = false;
-            _setMarker(LatLng(value.latitude, value.longitude),
-                info: "My Current Location");
-          });
-        },
-        shape: const CircleBorder(),
-        backgroundColor: Colors.red.shade400,
-        child: const Icon(
-          Icons.my_location_rounded,
-          color: Colors.white,
-          size: 25,
-        ),
-      ),
-    );
+        bottom: MediaQuery.of(context).size.height * 0.15,
+        right: 5,
+        child: CustomFloatingActionButton(
+          controller: _controller,
+          getCurrentUserLocation: getCurrentUserLocation,
+          setMarker: _setMarker,
+          backgroundColor: Colors.red.shade400,
+          icon: Icons.my_location_rounded,
+          iconSize: 25.0,
+          markerInfo: "My Current Location",
+        ));
   }
 
-  Positioned autocompletesearchbar() {
+  Positioned autoCompleteSearchBar() {
     return Positioned(
       top: 40.0,
       right: 15.0,
       left: 15.0,
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            width: double.infinity,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5.0), color: Colors.white),
-            child: SizedBox(
-              height: 50.0,
-              child: ValueListenableBuilder(
-                valueListenable: _searchAutoCompleteAddr,
-                builder: (BuildContext context, dynamic value, Widget? _) {
-                  return TextField(
-                    controller: _searchEditingController,
-                    keyboardType: TextInputType.streetAddress,
-                    autofocus: true, //for keyboard focus upon the start
-                    textInputAction: TextInputAction
-                        .search, //to trigger enter key here search key
-                    onEditingComplete: () async {
-                      searchandNavigate(await _controller.future, value,
-                          zoom: 14);
-                      FocusManager.instance.primaryFocus
-                          ?.unfocus(); //to hide keyboard upon pressing done
-                      _searchAutoCompleteAddr.value = '';
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search Auto Complete..',
-                      border: InputBorder.none,
-                      contentPadding:
-                          const EdgeInsets.only(left: 15.0, top: 12.0),
-                      suffixIcon: TextToSpeech(
-                        textController: _searchEditingController,
-                        onSpeechResult: (text) async {
-                          GoogleMapController mapController =
-                              await _controller.future.then(
-                            (value) => searchandNavigate(value, text, zoom: 14),
-                          );
-                        },
-                      ),
-                    ),
-                    onChanged: (val) {
-                      //!<<<<debounce
-                      if (_debounce?.isActive ?? false) _debounce?.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                        _searchAutoCompleteAddr.value = val;
-                      });
-                      //!debounce>>>>
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+      child: SearchAutoComplete(
+        searchAutocompleteAddr: _searchAutoCompleteAddr,
+        searchEditingController: _searchEditingController,
+        controllerFuture: () => _controller.future,
+        searchAndNavigate: (controller, value, {zoom = 14}) =>
+            searchAndNavigate(controller, value, zoom: 14),
+        debounce: _debounce,
       ),
     );
   }
 
-// //!function to show auto complete suggestion in stack
   Positioned showAutoCompleteList() {
-    return noreslt == false && _searchAutoCompleteAddr.value.trim().length >= 2
-        ? Positioned(
-            top: 110,
-            right: 15,
-            left: 15,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_searchAutoCompleteAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () {
-                                  setState(() async {
-                                    _autoCompleteSearchEditingController.text =
-                                        snapshot.data['predictions'][index]
-                                                ['description']
-                                            .toString();
-                                    //!important
-                                    FocusScope.of(context).requestFocus(
-                                        FocusNode()); //to close the keyboard
-                                    searchandNavigate(
-                                        await _controller.future,
-                                        _autoCompleteSearchEditingController
-                                            .text,
-                                        zoom: 14);
-                                    _searchAutoCompleteAddr.value = '';
-                                  });
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_searchAutoCompleteAddr.value
-                                            .trim()
-                                            .length >=
-                                        2 &&
-                                    snapshot.hasData) {
-                                  noreslt = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
-        : Positioned(
-            top: 110,
-            right: 15,
-            left: 15,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  // Close Button positioned at the top-right corner
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          showAutoCompleteSearchBar = false;
-                          _autoCompleteSearchEditingController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  // Centered content
-                  const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'No results to show',
-                          style: TextStyle(fontWeight: FontWeight.w400),
-                        ),
-                        SizedBox(height: 5.0),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+    return Positioned(
+      top: 110,
+      right: 15,
+      left: 15,
+      child: AutoCompleteList(
+        searchValueNotifier: _searchAutoCompleteAddr,
+        searchEditingController: _autoCompleteSearchEditingController,
+        onSearchChange: (value) => onChange(value),
+        controllerFuture: () => _controller.future,
+        searchAndNavigate: (controller, value, {zoom = 14}) =>
+            searchAndNavigate(controller, value, zoom: 14),
+      ),
+    );
   }
 
 //!function to get direction from origin to destination in stack
@@ -840,320 +636,86 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 //!Function to show auto complete suggestion in stack upon origin to destination navigation in flutter
   Positioned showOriginAutoCompleteListUponNavigation() {
-    return originnoreslt == false && _originAddr.value.trim().length >= 2
+    return originNoResult == false && _originAddr.value.trim().length >= 2
         ? Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_originAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    _originController.text = snapshot
-                                        .data['predictions'][index]
-                                            ['description']
-                                        .toString();
-
-                                    _originAddr.value = '';
-                                  });
-                                  FocusManager.instance.primaryFocus
-                                      ?.nextFocus();
-                                  _originAddr.value = '';
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_originAddr.value.trim().length >= 2 &&
-                                    snapshot.hasData) {
-                                  originnoreslt = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
+            child: OriginAutoCompleteListTrue(
+              searchValueNotifier: _originAddr,
+              futureData: (value) => onChange(value),
+              textController: _originController,
+              onSelectItem: (selectedText) {
+                setState(() {
+                  _originController.text = selectedText;
+                  _originAddr.value = '';
+                });
+              },
+            ))
         : Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    right: 10, // Close button positioned to the top-right
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Use the close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          getDirections = false;
-                          _originController.clear();
-                          _destinationController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            developer.log('pressed');
-                            await getcurrentuserlocation().then((value) {
-                              placemarkFromCoordinates(
-                                      value.latitude, value.longitude)
-                                  .then((placemark) {
-                                _originController.text =
-                                    '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} ${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} ${placemark.reversed.last.country}';
-                                _originController.selection =
-                                    TextSelection.fromPosition(TextPosition(
-                                        offset: _originController.text.length));
-                                FocusManager.instance.primaryFocus?.nextFocus();
-                                _originAddr.value = '';
-                              });
-                            }).then((value) => FocusManager
-                                .instance.primaryFocus
-                                ?.nextFocus());
-                          },
-                          child: Container(
-                            height: 45,
-                            padding: const EdgeInsets.all(5),
-                            margin: const EdgeInsets.only(
-                                top: 10, right: 15, left: 15, bottom: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white60.withOpacity(1),
-                              borderRadius: BorderRadius.circular(10.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.grey,
-                                  offset: Offset(0.0, 1.0), //(x,y)
-                                  blurRadius: 3.0,
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.my_location_rounded,
-                                  color: Colors.black45,
-                                  size: 20,
-                                ),
-                                Text(" Use your location",
-                                    style: TextStyle(
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w500)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10.0),
-                        const Text(
-                          'No results to show',
-                          style: TextStyle(fontWeight: FontWeight.w400),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+            child: OriginAutocompleteListFalse(
+              onClose: () {
+                setState(() {
+                  getDirections = false;
+                  _originController.clear();
+                  _destinationController.clear();
+                });
+              },
+              onUseCurrentLocation: () async {
+                await getCurrentUserLocation().then((value) {
+                  placemarkFromCoordinates(value.latitude, value.longitude)
+                      .then((placemark) {
+                    _originController.text =
+                        '${placemark.reversed.last.name} ${placemark.reversed.last.subLocality} '
+                        '${placemark.reversed.last.locality} ${placemark.reversed.last.administrativeArea} '
+                        '${placemark.reversed.last.country}';
+                    _originController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: _originController.text.length));
+                    FocusManager.instance.primaryFocus?.nextFocus();
+                    _originAddr.value = '';
+                  });
+                });
+              },
+            ));
   }
 
   Positioned showDestinationAutoCompleteListUponNavigation() {
-    return destinationnorelt == false &&
+    return destinationNoResult == false &&
             _destinationAddr.value.trim().length >= 2
         ? Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: FutureBuilder(
-                future: onChange(_destinationAddr.value),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  return snapshot.hasData
-                      ? ListView.builder(
-                          itemCount: snapshot.data['predictions'].length ?? 3,
-                          padding: const EdgeInsets.only(top: 0, right: 0),
-                          itemBuilder: (BuildContext context, int index) {
-                            if (snapshot.hasData) {
-                              return ListTile(
-                                title: Text(
-                                  snapshot.data['predictions'][index]
-                                          ['description']
-                                      .toString(),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                onTap: () async {
-                                  _destinationController.text = snapshot
-                                      .data['predictions'][index]['description']
-                                      .toString();
-                                  var directions = await MapServices()
-                                      .getDirections(_originController.text,
-                                          _destinationController.text);
-                                  _markers = {};
-                                  _polylines = {};
-                                  gotoPlace(
-                                      directions['start_location']['lat'],
-                                      directions['start_location']['lng'],
-                                      directions['end_location']['lat'],
-                                      directions['end_location']['lng'],
-                                      directions['bounds_ne'],
-                                      directions['bounds_sw']);
-                                  _setPolyline(directions['polyline_decoded']);
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                  _originAddr.value = '';
-                                  _destinationAddr.value = '';
-
-                                  setState(() {});
-                                },
-                                leading: const Icon(
-                                  Icons.location_on_outlined,
-                                  color: Colors.red,
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                if (_destinationAddr.value.trim().length >= 2 &&
-                                    snapshot.hasData) {
-                                  destinationnorelt = true;
-                                }
-                              });
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          },
-                        )
-                      : const Center(
-                          child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            Padding(
-                              padding: EdgeInsets.all(8.0),
-                              child: Text(
-                                "Loading...",
-                                textScaleFactor: 1.5,
-                              ),
-                            ),
-                          ],
-                        ));
-                },
-              ),
-            ),
-          )
+            child: DestinationAutoCompleteListTrue(
+              destinationAddr: _destinationAddr,
+              destinationController: _destinationController,
+              originController: _originController,
+              onChange: (value) => onChange(value),
+              gotoPlace: gotoPlace,
+              setPolyline: _setPolyline,
+              mapServices: MapServices(),
+            ))
         : Positioned(
             top: 170,
             right: 10,
             left: 10,
-            child: Container(
-              height: 200.0,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                color: Colors.red.shade100.withOpacity(0.7),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.close, // Use the close icon
-                        color: Colors.black,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          getDirections = false;
-                          _originController.clear();
-                          _destinationController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                  const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'No results to show',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        SizedBox(height: 5.0),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+            child: DestinationAutoCompleteListFalse(
+              onClose: () {
+                setState(() {
+                  getDirections = false; // Update your state variable
+                  _originController.clear(); // Clear the origin controller
+                  _destinationController
+                      .clear(); // Clear the destination controller
+                });
+              },
+            ));
   }
 
 //! functction for naviagtion to a spectific latlang
-  searchandNavigate(GoogleMapController mapController, String inputvalue,
+  searchAndNavigate(GoogleMapController mapController, String inputvalue,
       {int? zoom}) async {
     await locationFromAddress(inputvalue).then(
       (result) => {
@@ -1182,23 +744,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         25));
     _setMarker(LatLng(lat, lng));
     _setMarker(LatLng(endLat, endLng));
-  }
-
-//! functction to move camera sightly upon sliding the page viewer
-  Future<void> moveCameraSlightly() async {
-    final GoogleMapController controller = await _controller.future;
-
-    controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
-        target: LatLng(
-            allFavoritePlaces[_pageController.page!.toInt()]['geometry']
-                    ['location']['lat'] +
-                0.0125,
-            allFavoritePlaces[_pageController.page!.toInt()]['geometry']
-                    ['location']['lng'] +
-                0.005),
-        zoom: 14.0,
-        bearing: 45.0,
-        tilt: 45.0)));
   }
 
 //! functction to go to searched place

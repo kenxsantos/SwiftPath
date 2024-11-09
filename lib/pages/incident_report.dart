@@ -10,6 +10,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:logger/logger.dart';
 
 class IncidentReportPage extends StatefulWidget {
   const IncidentReportPage({super.key});
@@ -23,6 +24,10 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
   );
+  var logger = Logger(
+    printer: PrettyPrinter(),
+  );
+
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController =
@@ -133,7 +138,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
     try {
       position = await _getCurrentLocation();
     } catch (e) {
-      print('Error getting location: $e');
+      logger.e('Error getting location: $e');
       _handleError();
       return;
     }
@@ -143,7 +148,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       address =
           await _getAddressFromLatLng(position.latitude, position.longitude);
     } catch (e) {
-      print('Error getting address: $e');
+      logger.e('Error getting address: $e');
       _handleError();
       return;
     }
@@ -159,9 +164,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
     }
 
     final int incidentKey = _generateIncidentKey();
-    final String roamAiApiKey =
-        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Firebase reference
-
+    final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
     try {
       final bool isGeofenceCreated = await _createGeofence(
         position,
@@ -172,7 +175,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       );
 
       if (isGeofenceCreated) {
-        print('Geofence created and stored in Firebase successfully!');
+        logger.i('Geofence created and stored in Firebase successfully!');
         _showDialog('Success', 'Incident reported successfully!');
 
         // Clear form fields
@@ -181,7 +184,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
         _image = null;
       }
     } catch (e) {
-      print('Error creating geofence: $e');
+      logger.e('Error creating geofence: $e');
       _showDialog('Error', 'An error occurred while creating the geofence.');
     } finally {
       _handleError(); // Reset loading state
@@ -246,24 +249,24 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
         'timestamp': DateTime.now().toIso8601String(),
       });
 
-      return true; // Indicate success
+      return true;
     } else {
-      print('Failed to create geofence: ${response.body}');
-      return false; // Indicate failure
+      logger.e('Failed to create geofence: ${response.body}');
+      return false;
     }
   }
 
   int _generateIncidentKey() {
     final Random random = Random();
-    int key1 = random.nextInt(900000) + 100000; // 6 digits
-    int key2 = random.nextInt(9000) + 1000; // 4 digits
-    return int.parse('$key1$key2'); // Combine into a 10-digit key
+    int key1 = random.nextInt(900000) + 100000;
+    int key2 = random.nextInt(9000) + 1000;
+    return int.parse('$key1$key2');
   }
 
   void _handleError() {
     setState(() {
-      _isLoading = false; // Stop loading when done
-      _isRequestInProgress = false; // Reset the flag to allow future requests
+      _isLoading = false;
+      _isRequestInProgress = false;
     });
   }
 
@@ -299,7 +302,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
           "${place.street}, ${place.locality}, ${place.postalCode}, ${place.country}";
       return address;
     } catch (e) {
-      print(e);
+      logger.e(e);
       return "Address not available";
     }
   }

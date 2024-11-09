@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:swiftpath/pages/incident_report.dart';
 import 'package:swiftpath/pages/settings_page.dart';
-import 'package:swiftpath/views/maps_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
