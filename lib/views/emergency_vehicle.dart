@@ -13,6 +13,7 @@ import 'package:roam_flutter/roam_flutter.dart';
 import 'package:roam_flutter/trips_v2/RoamTrip.dart';
 import 'package:roam_flutter/trips_v2/request/RoamTripStops.dart';
 import 'package:swiftpath/logger.dart';
+import 'package:swiftpath/screens/users/pages/show_routes.dart';
 import 'package:swiftpath/services/map_services.dart';
 import 'package:logger/logger.dart';
 
@@ -53,8 +54,8 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   Future<void> _getUserLocationAndFetchReports() async {
-    // position = await _getCurrentPosition();
-    _fetchReports(120.9878531, 14.5963622, 10);
+    position = await _getCurrentPosition();
+    _fetchReports(position.longitude, position.latitude, 10);
   }
 
   Future<Position> _getCurrentPosition() async {
@@ -88,7 +89,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final int radiusInMeters = (radius * 1000).toInt();
+    final int radiusInMeters = (radius * 10000).toInt();
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -202,25 +203,18 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                       child: TextButton(
                         onPressed: () async {
                           position = await _getCurrentPosition();
-                          var address = await _getAddressFromLatLng(
-                              position.latitude, position.longitude);
-                          var directions = await MapServices().getDirections(
-                            address,
-                            report['address'],
-                          );
-                          logger.f(directions);
                           Navigator.pushNamed(
                             context,
                             '/show-routes',
                             arguments: {
-                              'start_location': directions['start_location'],
-                              'end_location': directions['end_location'],
-                              'setPolyline': directions['polyline_decoded'],
+                              'incident_report': {
+                                'latitude': report['latitude'],
+                                'longitude': report['longitude'],
+                              },
                             },
                           );
-
-                          double longitude = report['longitude'];
-                          double latitude = report['latitude'];
+                          // double longitude = report['longitude'];
+                          // double latitude = report['latitude'];
                           // await _createTrip(longitude, latitude);
                           // await _startTrip();
                         },
