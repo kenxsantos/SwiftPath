@@ -54,7 +54,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const ShowRoutes(),
+      home: const LandingPage(),
       routes: {
         '/landing': (context) => const LandingPage(),
         '/homepage': (context) => HomePage(),
@@ -66,7 +66,12 @@ class MyApp extends StatelessWidget {
         '/splash-screen': (context) => const SplashScreen(),
         '/incident-report': (context) => const IncidentReportPage(),
         '/emergency-vehicles': (context) => const EmergencyVehicles(),
-        '/show-routes': (context) => const ShowRoutes(),
+        '/show-routes': (context) => const ShowRoutes(
+              incidentReport: {
+                'latitude': 37.7749, // Example latitude (San Francisco)
+                'longitude': -122.4194, // Example longitude (San Francisco)
+              },
+            ),
       },
     );
   }
