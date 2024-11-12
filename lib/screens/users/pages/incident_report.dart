@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,10 +21,6 @@ class IncidentReportPage extends StatefulWidget {
 }
 
 class _IncidentReportPageState extends State<IncidentReportPage> {
-  GoogleMapController? _mapController;
-  LatLng? _currentLocation;
-  Marker? _userMarker;
-
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
@@ -32,27 +28,21 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
   var logger = Logger(
     printer: PrettyPrinter(),
   );
+
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController(); // Email controller
+  String? _imageUrl;
   File? _image;
+  bool _isUploading = false;
   bool _isLoading = false;
   bool _isRequestInProgress = false;
-  String? _imageUrl;
 
   @override
   void initState() {
     super.initState();
     _fetchUserEmail();
-    _getCurrentLocation();
-    Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters
-      ),
-    ).listen((Position position) {
-      _updateUserLocation(position);
-    });
   }
 
   Future<Position> _getCurrentLocation() async {
@@ -73,28 +63,8 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
-    Position position = await Geolocator.getCurrentPosition(
-      locationSettings: locationSettings,
-    );
-    _updateUserLocation(position);
     return await Geolocator.getCurrentPosition(
         locationSettings: locationSettings);
-  }
-
-  void _updateUserLocation(Position position) {
-    setState(() {
-      _currentLocation = LatLng(position.latitude, position.longitude);
-      _userMarker = Marker(
-        markerId: MarkerId('userLocation'),
-        position: _currentLocation!,
-        infoWindow: InfoWindow(title: 'Your Location'),
-      );
-    });
-
-    // Move the map camera to the new location
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLng(_currentLocation!),
-    );
   }
 
   Future<void> _fetchUserEmail() async {
@@ -107,11 +77,45 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
 
   Future<void> _uploadImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await showDialog<XFile>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          actions: [
+            TextButton(
+              child: const Text('Camera'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.camera));
+              },
+            ),
+            TextButton(
+              child: const Text('Gallery'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.gallery));
+              },
+            ),
+          ],
+        );
+      },
+    );
 
     if (pickedFile != null) {
       setState(() {
-        _image = File(pickedFile.path);
+        _isUploading = true;
+        _image = File(pickedFile.path); // Store the picked image
+      });
+
+      String fileName = pickedFile.path.split('/').last;
+      Reference storageRef =
+          FirebaseStorage.instance.ref().child('incident_images/$fileName');
+      await storageRef.putFile(_image!);
+
+      _imageUrl = await storageRef.getDownloadURL();
+      setState(() {
+        _isUploading = false;
       });
     }
   }
