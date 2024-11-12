@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
 import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
 import 'package:swiftpath/screens/users/pages/report_history_page.dart';
+import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/show_routes.dart';
-import 'package:swiftpath/views/emergency_vehicle.dart';
+import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
-import 'package:swiftpath/screens/users/pages/incident_report.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:swiftpath/views/landing_page.dart';
@@ -64,7 +65,7 @@ class MyApp extends StatelessWidget {
         '/report-history': (context) => const ReportHistoryPage(),
         '/maps': (context) => const MapScreen(),
         '/splash-screen': (context) => const SplashScreen(),
-        '/incident-report': (context) => const IncidentReportPage(),
+        '/incident-report': (context) => const ReportIncidentPage(),
         '/emergency-vehicles': (context) => const EmergencyVehicles(),
         '/show-routes': (context) => const ShowRoutes(
               incidentReport: {
@@ -72,6 +73,7 @@ class MyApp extends StatelessWidget {
                 'longitude': -122.4194, // Example longitude (San Francisco)
               },
             ),
+        '/incident-reports': (context) => const IncidentReportsScreen()
       },
     );
   }
