@@ -17,10 +17,11 @@ import 'package:swiftpath/components/destination_autocomplete_list_true.dart';
 import 'package:swiftpath/components/floating_button.dart';
 import 'package:swiftpath/components/origin_autocomplete_list_true.dart';
 import 'package:swiftpath/components/origin_autocomplete_list_false.dart';
-import 'package:swiftpath/screens/users/pages/incident_report.dart';
+import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
+import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
 import 'package:swiftpath/components/searchBar.dart';
-import 'package:swiftpath/views/emergency_vehicle.dart';
+import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/auto_complete_result.dart';
@@ -292,6 +293,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
+                      builder: (context) => const IncidentReportsScreen()),
+                );
+              },
+              icon: const Icon(
+                Icons.emergency_rounded,
+                color: Colors.white,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
                       builder: (context) => const EmergencyVehicles()),
                 );
               },
@@ -317,7 +331,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const IncidentReportPage()),
+                      builder: (context) => const ReportIncidentPage()),
                 );
               },
               icon: const Icon(

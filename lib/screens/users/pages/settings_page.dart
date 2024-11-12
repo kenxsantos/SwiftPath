@@ -71,17 +71,6 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () => AuthValidation.signOut(
                 context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Create Trip',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/show-routes');
-            },
-          )
         ],
       ),
     );

@@ -201,8 +201,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         controller.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
-              target: LatLng(position.latitude, position.longitude),
-              zoom: 13.5, // Keep the same zoom level or adjust as needed
+              target: LatLng(
+                  position.latitude,
+                  position
+                      .longitude), // Keep the same zoom level or adjust as needed
             ),
           ),
         );
