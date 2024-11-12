@@ -52,17 +52,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ListTile(
             onTap: () {
-              Navigator.pushNamed(context, '/route-history');
-            },
-            leading: const Icon(Icons.history,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Route History',
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-          ListTile(
-            onTap: () {
               Navigator.pushNamed(context, '/report-history');
             },
             leading: const Icon(Icons.pending_actions_outlined,
@@ -83,50 +72,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
           ListTile(
-            leading:
-                const Icon(Icons.more, color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'My User',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/my-user');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.location_on,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'My Location Tracking',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/my-location-tracking');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.subscriptions,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'My Subscription',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/my-subscription');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.trip_origin,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'My Trips',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/my-trips');
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.add_circle_outline,
                 color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
@@ -136,14 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {
               Navigator.pushNamed(context, '/show-routes');
             },
-          ),
-          ListTile(
-            leading: const Icon(Icons.more),
-            title: const Text('Create Trip'),
-            onTap: () {
-              _createTrip();
-            },
-          ),
+          )
         ],
       ),
     );
