@@ -28,6 +28,13 @@ class _IncidentReportsScreenState extends State<IncidentReportsScreen> {
           reports.add(report);
         });
 
+        // Sort reports by timestamp in descending order (latest first)
+        reports.sort((a, b) {
+          DateTime timestampA = DateTime.parse(a['timestamp']);
+          DateTime timestampB = DateTime.parse(b['timestamp']);
+          return timestampB.compareTo(timestampA); // Descending order
+        });
+
         setState(() {
           _reports = reports;
           _loading = false;
@@ -109,7 +116,7 @@ class _IncidentReportsScreenState extends State<IncidentReportsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Incident Reports'),
+        title: const Text('Admin Incident Reports'),
       ),
       body: _loading
           ? const Center(
