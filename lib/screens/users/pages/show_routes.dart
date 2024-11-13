@@ -100,7 +100,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                             initialCameraPosition: CameraPosition(
                               target: LatLng(currentLocation!.latitude,
                                   currentLocation!.longitude),
-                              zoom: 13.5,
                             ),
                             mapType: MapType.normal,
                             onMapCreated: (controller) =>
