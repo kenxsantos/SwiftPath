@@ -20,9 +20,8 @@ class BarangayMaps extends ConsumerStatefulWidget {
 class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   final Completer<GoogleMapController> _controller = Completer();
 
-  Set<Marker> _markers = <Marker>{};
-  Set<Marker> _markersDupe = <Marker>{};
-  Set<Circle> _circles = <Circle>{};
+  final Set<Marker> _markers = <Marker>{};
+  final Set<Circle> _circles = <Circle>{};
   List<Map<String, dynamic>> _reports = [];
 //initial marker count value
   int markerIdCounter = 1;
@@ -126,12 +125,12 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
               });
               // Add marker for each matching report
               setMarker(LatLng(latitude, longitude), info: "Incident Report");
+              setCircle(LatLng(latitude, longitude));
             }
           });
         }
 
         // Set map circle around the user's location
-        setCircle(LatLng(latitude, longitude));
 
         setState(() {
           _reports =
@@ -164,7 +163,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
         circleId: const CircleId('circle_1'),
         center: point,
         fillColor: Colors.blue.withOpacity(0.1),
-        radius: 10000,
+        radius: 500.0,
         strokeColor: Colors.blue,
         strokeWidth: 1,
       ));
