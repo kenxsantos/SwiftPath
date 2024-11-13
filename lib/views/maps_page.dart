@@ -17,6 +17,7 @@ import 'package:swiftpath/components/destination_autocomplete_list_true.dart';
 import 'package:swiftpath/components/floating_button.dart';
 import 'package:swiftpath/components/origin_autocomplete_list_true.dart';
 import 'package:swiftpath/components/origin_autocomplete_list_false.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
@@ -305,8 +306,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const EmergencyVehicles()),
+                  MaterialPageRoute(builder: (context) => const BarangayMaps()),
                 );
               },
               icon: const Icon(

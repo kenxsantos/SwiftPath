@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
 import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
 import 'package:swiftpath/screens/users/pages/report_history_page.dart';
