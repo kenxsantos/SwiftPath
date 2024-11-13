@@ -40,13 +40,14 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Barangay Maps Page")),
       body: Stack(
         children: [
           // Google Map
           GoogleMap(
             initialCameraPosition: const CameraPosition(
               target: LatLng(120.9901827, 14.5965241),
-              zoom: 13.5,
+              zoom: 15,
             ),
             mapType: MapType.normal,
             onMapCreated: (controller) => _controller.complete(controller),
@@ -80,7 +81,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final int radiusInMeters = (10 * 10000).toInt();
+    const int radiusInMeters = 500;
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -157,7 +158,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   void setCircle(LatLng point) async {
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(
-        CameraPosition(target: point, zoom: 12)));
+        CameraPosition(target: point, zoom: 15)));
     setState(() {
       _circles.add(Circle(
         circleId: const CircleId('circle_1'),

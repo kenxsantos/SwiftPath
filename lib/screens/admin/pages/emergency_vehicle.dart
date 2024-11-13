@@ -50,7 +50,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
   Future<void> _getUserLocationAndFetchReports() async {
     position = await _getCurrentPosition();
-    _fetchReports(position.longitude, position.latitude, 10);
+    _fetchReports(120.9901827, 14.5965241);
   }
 
   Future<Position> _getCurrentPosition() async {
@@ -77,14 +77,13 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   }
 
   // Fetch user's reports from Firebase and Roam.ai
-  Future<void> _fetchReports(
-      double latitude, double longitude, double radius) async {
+  Future<void> _fetchReports(double latitude, double longitude) async {
     setState(() {
       _loading = true;
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    final int radiusInMeters = (radius * 10000).toInt();
+    const int radiusInMeters = 500;
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -240,7 +239,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Incident Reports'),
+        title: const Text('Barangay Incident Reports'),
       ),
       body: _loading
           ? const Center(
