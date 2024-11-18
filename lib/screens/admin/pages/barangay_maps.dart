@@ -34,7 +34,9 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   @override
   void initState() {
     super.initState();
-    _fetchUserReports(120.9901827, 14.5965241);
+    _fetchUserReports(120.989861, 14.5973853);
+    _listenToDatabaseChanges();
+    addGeofenceRadius();
   }
 
   @override
@@ -43,10 +45,12 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
       appBar: AppBar(title: const Text("Barangay Maps Page")),
       body: Stack(
         children: [
-          // Google Map
           GoogleMap(
             initialCameraPosition: const CameraPosition(
-              target: LatLng(120.9901827, 14.5965241),
+              target: LatLng(
+                14.5965241,
+                120.9901827,
+              ),
               zoom: 15,
             ),
             mapType: MapType.normal,
@@ -74,12 +78,42 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     );
   }
 
+  void _listenToDatabaseChanges() {
+    final DatabaseReference dbRef =
+        FirebaseDatabase.instance.ref("incident-reports");
+    dbRef.onChildAdded.listen((DatabaseEvent event) {
+      _showSnackbar("New incident report added!");
+      _fetchUserReports(120.9901827, 14.5965241);
+    });
+
+    dbRef.onChildChanged.listen((DatabaseEvent event) {
+      _showSnackbar("An incident report was updated!");
+      _fetchUserReports(120.9901827, 14.5965241);
+    });
+
+    dbRef.onChildRemoved.listen((DatabaseEvent event) {
+      _showSnackbar("An incident report was deleted!");
+      _fetchUserReports(120.9901827, 14.5965241);
+    });
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _fetchUserReports(double latitude, double longitude) async {
     final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
     setState(() {
       _loading = true;
+      _markers.clear();
     });
-
+    // setCircle(const LatLng(120.9859236, 14.6006512));
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
     const int radiusInMeters = 500;
     var response = await http.get(
@@ -110,32 +144,27 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
           Map<String, dynamic> reports =
               Map<String, dynamic>.from(snapshot.value as Map);
 
-          // Step 3: Filter reports by matching Roam.ai geofence IDs
           reports.forEach((key, value) {
             final reportData = Map<String, dynamic>.from(value);
             final latitude = reportData['latitude'];
             final longitude = reportData['longitude'];
             final geofenceId = reportData['geofence_id'];
+            final status = reportData['status'];
 
             if (latitude != null &&
                 longitude != null &&
-                roamGeofenceIds.contains(geofenceId)) {
+                roamGeofenceIds.contains(geofenceId) &&
+                status == 'Pending') {
               coordinatesList.add({
                 'latitude': latitude,
                 'longitude': longitude,
               });
-              // Add marker for each matching report
               setMarker(LatLng(latitude, longitude), info: "Incident Report");
-              setCircle(LatLng(latitude, longitude));
             }
           });
         }
-
-        // Set map circle around the user's location
-
         setState(() {
-          _reports =
-              coordinatesList; // Update _reports to contain only coordinates
+          _reports = coordinatesList;
           _loading = false;
         });
 
@@ -155,14 +184,15 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     }
   }
 
-  void setCircle(LatLng point) async {
+  void addGeofenceRadius() async {
     final GoogleMapController controller = await _controller.future;
+    const LatLng geofenceLocation = LatLng(14.5963928, 120.9907785);
     controller.animateCamera(CameraUpdate.newCameraPosition(
-        CameraPosition(target: point, zoom: 15)));
+        const CameraPosition(target: geofenceLocation, zoom: 15)));
     setState(() {
       _circles.add(Circle(
         circleId: const CircleId('circle_1'),
-        center: point,
+        center: geofenceLocation,
         fillColor: Colors.blue.withOpacity(0.1),
         radius: 500.0,
         strokeColor: Colors.blue,
@@ -177,11 +207,40 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
         markerId: MarkerId('marker_$counter'),
         position: point,
         infoWindow: InfoWindow(title: info),
-        onTap: () {},
+        onTap: () => showBottomSheet(),
         icon: BitmapDescriptor.defaultMarker);
 
     setState(() {
       _markers.add(marker);
     });
+  }
+
+  void showBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            color: Colors.white,
+          ),
+          height: 200,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                const Text('Incident Report'),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
