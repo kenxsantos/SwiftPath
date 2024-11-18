@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -12,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logger/logger.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class ReportIncidentPage extends StatefulWidget {
   const ReportIncidentPage({super.key});
@@ -150,8 +150,6 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       _handleError();
       return;
     }
-
-    // Check if required fields are filled
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _detailsController.text.isEmpty ||
@@ -161,22 +159,18 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       return;
     }
 
-    final int incidentKey = _generateIncidentKey();
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
     try {
       final bool isGeofenceCreated = await _createGeofence(
         position,
         roamAiApiKey,
         dbRef,
-        incidentKey,
         address,
       );
 
       if (isGeofenceCreated) {
         logger.i('Geofence created and stored in Firebase successfully!');
         _showDialog('Success', 'Incident reported successfully!');
-
-        // Clear form fields
         _detailsController.clear();
         _imageUrl = null;
         _image = null;
@@ -185,21 +179,25 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       logger.e('Error creating geofence: $e');
       _showDialog('Error', 'An error occurred while creating the geofence.');
     } finally {
-      _handleError(); // Reset loading state
+      _handleError();
     }
   }
 
   Future<bool> _createGeofence(Position position, String apiKey,
-      DatabaseReference dbRef, int incidentKey, String address) async {
+      DatabaseReference dbRef, String address) async {
+    final DateTime now = DateTime.now();
+    final DateTime endTime = now.add(Duration(days: 1));
+    final String startTimeIso =
+        DateFormat("yyyy-MM-ddTHH:mm:ss").format(now.toUtc());
+    final String endTimeIso =
+        DateFormat("yyyy-MM-ddTHH:mm:ss").format(endTime.toUtc());
     final Map<String, dynamic> geofenceData = {
       "coordinates": [position.longitude, position.latitude],
       "geometry_radius": 500,
       "description": "Incident Location",
       "tag": "Incident Report",
       "metadata": {},
-      "user_ids": ["6bda16edea01848b3b419163"], // Example user ID
-      "group_ids": ["5cda16edea00845b3b419173"], // Example group ID
-      "is_enabled": [true, "2021-06-10T18:45:00", "2021-06-10T19:29:00"]
+      "is_enabled": [true, startTimeIso, endTimeIso]
     };
 
     final response = await http.post(
@@ -215,27 +213,9 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       final Map<String, dynamic> responseData =
           jsonDecode(response.body)['data'];
 
-      // Store geofence data in Firebase
-      await dbRef.child('geofences').push().set({
-        "geofence_id": responseData["geofence_id"],
-        "geometry_type": responseData["geometry_type"],
-        "geometry_radius": responseData["geometry_radius"],
-        "geometry_center": responseData["geometry_center"],
-        "is_enabled": responseData["is_enabled"],
-        "description": responseData["description"],
-        "tag": responseData["tag"],
-        "metadata": responseData["metadata"],
-        "user_ids": responseData["user_ids"],
-        "group_ids": responseData["group_ids"],
-        "is_deleted": responseData["is_deleted"],
-        "created_at": responseData["created_at"],
-        "updated_at": responseData["updated_at"],
-      });
-
       // Push incident report data to Firebase
       await dbRef.child('incident-reports/').push().set({
         'geofence_id': responseData["geofence_id"],
-        'incident_key': incidentKey,
         'image_url': _imageUrl,
         'latitude': position.latitude,
         'longitude': position.longitude,
@@ -252,13 +232,6 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
       logger.e('Failed to create geofence: ${response.body}');
       return false;
     }
-  }
-
-  int _generateIncidentKey() {
-    final Random random = Random();
-    int key1 = random.nextInt(900000) + 100000;
-    int key2 = random.nextInt(9000) + 1000;
-    return int.parse('$key1$key2');
   }
 
   void _handleError() {
