@@ -119,7 +119,6 @@ class _AdminMapsState extends ConsumerState<AdminMaps> {
         markerId: MarkerId('marker_$counter'),
         position: point,
         infoWindow: InfoWindow(title: info),
-        onTap: () {},
         icon: BitmapDescriptor.defaultMarker);
 
     setState(() {

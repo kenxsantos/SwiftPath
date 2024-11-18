@@ -181,14 +181,13 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: LatLng(position.latitude, position.longitude),
-          zoom: 13.5,
         ),
       ),
     );
     positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high, // Set accuracy as per your needs
-        distanceFilter: 10, // Update every 10 meters; adjust as needed
+        distanceFilter: 1, // Update every 10 meters; adjust as needed
       ),
     ).listen((Position? position) {
       if (position != null) {
@@ -200,11 +199,8 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         controller.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
-              target: LatLng(
-                  position.latitude,
-                  position
-                      .longitude), // Keep the same zoom level or adjust as needed
-            ),
+                target: LatLng(position.latitude, position.longitude),
+                zoom: 15),
           ),
         );
 
