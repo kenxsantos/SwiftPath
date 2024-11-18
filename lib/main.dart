@@ -1,9 +1,12 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
 import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
+import 'package:swiftpath/screens/users/pages/geofence.dart';
+import 'package:swiftpath/screens/users/pages/my_users_page.dart';
 import 'package:swiftpath/screens/users/pages/report_history_page.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/show_routes.dart';
@@ -22,6 +25,10 @@ import 'package:roam_flutter/roam_flutter.dart';
 import 'package:logger/logger.dart';
 
 SharedPreferences? prefs;
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Background message: ${message.notification?.title}");
+}
 
 void main() async {
   var logger = Logger(
@@ -32,6 +39,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   final String roamAiPublishableKey =
       dotenv.env['ROAM_AI_PUBLISHABLE_KEY'] ?? '';
   if (roamAiPublishableKey.isNotEmpty) {
@@ -74,7 +82,8 @@ class MyApp extends StatelessWidget {
                 'longitude': -122.4194, // Example longitude (San Francisco)
               },
             ),
-        '/incident-reports': (context) => const IncidentReportsScreen()
+        '/incident-reports': (context) => const IncidentReportsScreen(),
+        '/users-page': (context) => const MyUsersPage(title: "Users Page"),
       },
     );
   }

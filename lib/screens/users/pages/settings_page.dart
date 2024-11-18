@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/screens/users/pages/my_users_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -70,6 +71,20 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             onTap: () => AuthValidation.signOut(
                 context: context, auth: _auth, googleSignIn: _googleSignIn),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout,
+                color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'My Users',
+              style: TextStyle(color: Colors.black87),
+            ),
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const MyUsersPage(
+                          title: "Users",
+                        ))),
           ),
         ],
       ),
