@@ -68,6 +68,8 @@ dependencies:
   roam_flutter: ^0.1.6
   permission_handler: ^11.3.1
   logger: ^2.4.0
+  firebase_messaging: ^15.1.5
+  googleapis_auth: ^1.6.0
 
 
 dev_dependencies:
