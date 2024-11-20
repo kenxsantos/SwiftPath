@@ -70,6 +70,8 @@ dependencies:
   logger: ^2.4.0
   firebase_messaging: ^15.1.5
   googleapis_auth: ^1.6.0
+  geofencing_api: ^2.0.0
+  flutter_local_notifications: ^18.0.1
 
 
 dev_dependencies:
