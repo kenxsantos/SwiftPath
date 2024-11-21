@@ -11,6 +11,8 @@ import 'package:swiftpath/screens/users/pages/report_history_page.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/show_routes.dart';
 import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
+import 'package:swiftpath/screens/users/pages/user_notification.dart';
+import 'package:swiftpath/screens/users/pages/users.dart';
 import 'package:swiftpath/views/maps_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 import 'firebase_options.dart';
@@ -26,8 +28,7 @@ import 'package:logger/logger.dart';
 
 SharedPreferences? prefs;
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print("Background message: ${message.notification?.title}");
+  print('Background Message: ${message.messageId}');
 }
 
 void main() async {
@@ -64,7 +65,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const LandingPage(),
+      home: const MyUsersPage(title: "Users Page"),
       routes: {
         '/landing': (context) => const LandingPage(),
         '/homepage': (context) => HomePage(),
