@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:roam_flutter/roam_flutter.dart';
 import 'package:logger/logger.dart';
+import 'package:swiftpath/screens/users/pages/sample_map.dart';
 
 class MyUsersPage extends StatefulWidget {
   const MyUsersPage({super.key, required this.title});
@@ -230,14 +233,14 @@ class _MyUsersPageState extends State<MyUsersPage> {
             ElevatedButton(
               child: const Text('Subscribe User Location'),
               onPressed: () async {
+                const String userId = '673dfabb5b61e3610260e343';
                 setState(() {
                   myUser = "Subscribing to user location...";
                 });
                 try {
-                  await Roam.subscribeUserLocation(
-                      userId: '673b720f05d68d149c1cfb8f');
+                  await Roam.subscribeUserLocation(userId: userId);
                   setState(() {
-                    myUser = "User location subscribed.";
+                    myUser = "User location subscribed. $userId";
                   });
                 } on PlatformException {
                   logger.e('Subscribe User Location Error');
@@ -267,6 +270,38 @@ class _MyUsersPageState extends State<MyUsersPage> {
               },
             ),
             ElevatedButton(
+                child: const Text('Get Current Location'),
+                onPressed: () async {
+                  setState(() {
+                    myUser = "fetching location..";
+                  });
+                  try {
+                    Roam.startTracking(trackingMode: "active");
+                    setState(() {
+                      myUser = "tracking location..";
+                    });
+                  } on PlatformException {
+                    print('Get Current Location Error');
+                  }
+                }),
+            ElevatedButton(
+                child: const Text('Roam on Location'),
+                onPressed: () async {
+                  setState(() {
+                    myUser = "roam on location..";
+                  });
+                  try {
+                    Roam.onLocation((location) {
+                      print(jsonEncode(location));
+                    });
+                    setState(() {
+                      myUser = "tracking on location..";
+                    });
+                  } on PlatformException {
+                    print('Get Current Location Error');
+                  }
+                }),
+            ElevatedButton(
               child: const Text('Logout User'),
               onPressed: () async {
                 try {
@@ -274,6 +309,13 @@ class _MyUsersPageState extends State<MyUsersPage> {
                 } catch (e) {
                   logger.e('Error logging out: $e');
                 }
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Maps'),
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => SampleMapScreen()));
               },
             ),
           ],
