@@ -72,6 +72,7 @@ dependencies:
   googleapis_auth: ^1.6.0
   geofencing_api: ^2.0.0
   flutter_local_notifications: ^18.0.1
+  web_socket_channel: ^3.0.1
 
 
 dev_dependencies:
