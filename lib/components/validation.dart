@@ -8,6 +8,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:roam_flutter/roam_flutter.dart';
+import 'package:swiftpath/views/splash_screen.dart';
 
 class AuthValidation {
   static void showAlert({
@@ -190,7 +191,8 @@ class AuthValidation {
           });
 
       // Navigate to the splash screen after successful sign-in
-      Navigator.pushReplacementNamed(context, '/splash-screen');
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const SplashScreen()));
     } catch (e) {
       print('Sign in failed: $e');
       _showErrorDialog(context, e.toString());

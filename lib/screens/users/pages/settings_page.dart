@@ -4,7 +4,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:http/http.dart' as http;
+import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
+import 'package:swiftpath/screens/users/pages/history_logs.dart';
+import 'package:swiftpath/screens/users/pages/location_settings.dart';
 import 'package:swiftpath/screens/users/pages/my_users_page.dart';
+import 'package:swiftpath/screens/users/pages/report_history_page.dart';
+import 'package:swiftpath/screens/users/pages/sample_map.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,19 +35,30 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           const SizedBox(height: 50),
           Center(
-            child: Text(
-              'SWIFTPATH ${_auth.currentUser?.displayName ?? ''}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 28,
-                color: Color.fromARGB(255, 224, 59, 59), // Title color
+              child: Column(
+            children: [
+              const Text(
+                'SWIFTPATH',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
+                  color: Color.fromARGB(255, 224, 59, 59), // Title color
+                ),
               ),
-            ),
-          ),
+              Text(_auth.currentUser?.displayName ?? '',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      color: Color.fromARGB(255, 224, 59, 59) // Subtitle color
+                      )),
+            ],
+          )),
           const SizedBox(height: 20),
           ListTile(
             onTap: () {
-              Navigator.pushNamed(context, '/edit-profile');
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const EditProfilePage()));
             },
             leading: const Icon(Icons.person,
                 color: Color.fromARGB(255, 224, 59, 59)),
@@ -53,12 +69,43 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ListTile(
             onTap: () {
-              Navigator.pushNamed(context, '/report-history');
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ReportHistoryPage()));
             },
             leading: const Icon(Icons.pending_actions_outlined,
                 color: Color.fromARGB(255, 224, 59, 59)),
             title: const Text(
               'Report History',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ),
+          ListTile(
+            onTap: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const HistoryLogs()));
+            },
+            leading: const Icon(Icons.history,
+                color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Logs',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ),
+          ListTile(
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const LocationSettings(
+                            userId: '67160b86c45da22b6c686977',
+                          )));
+            },
+            leading: const Icon(Icons.more_horiz_outlined,
+                color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'More',
               style: TextStyle(color: Colors.black87),
             ),
           ),
@@ -85,6 +132,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     builder: (context) => const MyUsersPage(
                           title: "Users",
                         ))),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout,
+                color: Color.fromARGB(255, 224, 59, 59)),
+            title: const Text(
+              'Sample Map',
+              style: TextStyle(color: Colors.black87),
+            ),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (context) => SampleMapScreen())),
           ),
         ],
       ),

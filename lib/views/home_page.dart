@@ -5,6 +5,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:swiftpath/components/validation.dart';
+import 'package:swiftpath/views/login_page.dart';
+import 'package:swiftpath/views/signup_page.dart';
+import 'package:swiftpath/views/splash_screen.dart';
 
 class HomePage extends StatelessWidget {
   HomePage({super.key});
@@ -28,7 +31,8 @@ class HomePage extends StatelessWidget {
         }
         if (snapshot.data == true) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacementNamed(context, '/splash-screen');
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const SplashScreen()));
           });
         }
         return Scaffold(
@@ -60,7 +64,11 @@ class HomePage extends StatelessWidget {
                             child: CustomButton(
                               buttonText: 'Login',
                               onPressed: () {
-                                Navigator.pushNamed(context, '/login');
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const LoginPage()));
                               },
                             ),
                           ),
@@ -71,7 +79,11 @@ class HomePage extends StatelessWidget {
                               buttonText: 'Sign Up',
                               isOutlined: true,
                               onPressed: () {
-                                Navigator.pushNamed(context, '/signup');
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignUpPage()));
                               },
                             ),
                           ),

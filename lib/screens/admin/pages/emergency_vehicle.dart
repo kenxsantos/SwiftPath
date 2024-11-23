@@ -11,6 +11,7 @@ import 'package:roam_flutter/roam_flutter.dart';
 import 'package:roam_flutter/trips_v2/RoamTrip.dart';
 import 'package:roam_flutter/trips_v2/request/RoamTripStops.dart';
 import 'package:logger/logger.dart';
+import 'package:swiftpath/screens/users/pages/show_routes.dart';
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -197,15 +198,16 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                       child: TextButton(
                         onPressed: () async {
                           position = await _getCurrentPosition();
-                          Navigator.pushNamed(
+                          Navigator.push(
                             context,
-                            '/show-routes',
-                            arguments: {
-                              'incident_report': {
-                                'latitude': report['latitude'],
-                                'longitude': report['longitude'],
-                              },
-                            },
+                            MaterialPageRoute(
+                              builder: (context) => ShowRoutes(
+                                incidentReport: {
+                                  'latitude': report['latitude'],
+                                  'longitude': report['longitude'],
+                                },
+                              ),
+                            ),
                           );
                           // double longitude = report['longitude'];
                           // double latitude = report['latitude'];
