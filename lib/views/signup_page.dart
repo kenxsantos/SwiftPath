@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:swiftpath/components/components.dart';
+import 'package:swiftpath/views/login_page.dart';
+import 'package:swiftpath/views/splash_screen.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -98,8 +100,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                 setState(() {
                                   _saving = false;
                                   _resetForm();
-                                  Navigator.pushReplacementNamed(
-                                      context, '/splash-screen');
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const SplashScreen()));
                                 });
                               },
                               onFailure: () {
@@ -111,7 +116,10 @@ class _SignUpPageState extends State<SignUpPage> {
                             );
                           },
                           questionPressed: () {
-                            Navigator.pushNamed(context, "/login");
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const LoginPage()));
                           },
                         ),
                       ],
