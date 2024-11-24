@@ -9,7 +9,6 @@ import 'package:swiftpath/screens/users/pages/history_logs.dart';
 import 'package:swiftpath/screens/users/pages/location_settings.dart';
 import 'package:swiftpath/screens/users/pages/my_users_page.dart';
 import 'package:swiftpath/screens/users/pages/report_history_page.dart';
-import 'package:swiftpath/screens/users/pages/sample_map.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -132,16 +131,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     builder: (context) => const MyUsersPage(
                           title: "Users",
                         ))),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Sample Map',
-              style: TextStyle(color: Colors.black87),
-            ),
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (context) => SampleMapScreen())),
           ),
         ],
       ),

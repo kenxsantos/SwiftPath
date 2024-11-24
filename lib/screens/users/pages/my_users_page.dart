@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:roam_flutter/roam_flutter.dart';
 import 'package:logger/logger.dart';
-import 'package:swiftpath/screens/users/pages/sample_map.dart';
 
 class MyUsersPage extends StatefulWidget {
   const MyUsersPage({super.key, required this.title});
@@ -309,13 +308,6 @@ class _MyUsersPageState extends State<MyUsersPage> {
                 } catch (e) {
                   logger.e('Error logging out: $e');
                 }
-              },
-            ),
-            ElevatedButton(
-              child: const Text('Maps'),
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => SampleMapScreen()));
               },
             ),
           ],
