@@ -45,7 +45,7 @@ class _UserNotificationState extends State<UserNotification> {
   void _showSnackbar(BuildContext context, String message) {
     final snackBar = SnackBar(
       content: Text(message),
-      behavior: SnackBarBehavior.floating,
+      // behavior: SnackBarBehavior.floating,
       duration: const Duration(seconds: 5),
     );
 

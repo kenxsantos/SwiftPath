@@ -8,8 +8,8 @@ import 'package:logger/logger.dart';
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:swiftpath/screens/users/pages/google_map_view.dart';
 import 'package:swiftpath/views/landing_page.dart';
+import 'package:swiftpath/views/maps_page.dart';
 import 'firebase_options.dart';
 
 // Roam SDK import
@@ -49,17 +49,7 @@ Future<void> initializeRoam() async {
 
   try {
     Roam.initialize(publishKey: roamAiPublishableKey);
-
-    // final User? user = FirebaseAuth.instance.currentUser;
-    // await Roam.createUser(
-    //   description: user?.email ?? '',
-    //   callBack: ({user}) {
-    //     logger.d('Roam User Created: $user');
-    //     Roam.offlineTracking(true);
-    //     Roam.allowMockLocation(allow: true);
-    //   },
-    // );
-
+    ;
     logger.d('Roam SDK initialized successfully');
   } catch (e) {
     logger.e('Roam SDK initialization failed: $e');
@@ -79,9 +69,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const MyHomePage(
-        title: "a",
-      ), // Replace with the initial page of your app
+      home: const LandingPage(), // Replace with the initial page of your app
     );
   }
 }
