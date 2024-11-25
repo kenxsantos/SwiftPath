@@ -116,7 +116,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://f9d7-27-126-152-3.ngrok-free.app";
+    String socketUrl = "https://d3f0-136-158-25-188.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -165,8 +165,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           String routesPolyline = routes[0]['overview_polyline'];
           List<LatLng> poly = decodePolyline(routesPolyline);
           setState(() {
+            polylines.clear();
             polylines.add(Polyline(
-              polylineId: const PolylineId('route_polyline'),
+              polylineId: const PolylineId('initial_route_polyline'),
               points: poly,
               color: Colors.blue, // Customize polyline color
               width: 5, // Customize polyline width
@@ -405,7 +406,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           children: [
                             ListTile(
                               onTap: () => setAlterativeRoutesPolyline(
-                                  route['overview_polyline']),
+                                  routes[index]['overview_polyline']),
                               title: const Text(
                                 'Follow Route',
                                 style: TextStyle(
@@ -466,16 +467,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void setAlterativeRoutesPolyline(String overviewPolyline) {
+    print(overviewPolyline);
     final decodedPolyline = decodePolyline(overviewPolyline);
     setState(() {
+      polylines.clear();
       polylines.add(Polyline(
-        polylineId: const PolylineId('route_polyline'),
+        polylineId: const PolylineId('alternative_route_polyline'),
         points: decodedPolyline,
         color: Colors.blue,
         width: 5,
       ));
     });
-
     Navigator.of(context).pop();
   }
 
