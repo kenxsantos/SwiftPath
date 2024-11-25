@@ -21,6 +21,8 @@ import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -53,6 +55,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _isLoading = false;
   Set<Polyline> polylines = <Polyline>{};
   final FocusNode _focusNode = FocusNode();
+
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+  final TextEditingController _chatController = TextEditingController();
+  List<Map<String, dynamic>> _chatMessages = [];
+  bool _isChatLoading = false;
+  late GenerativeModel _genAI;
 
   // Initialize Firebase Messaging
   void _setupFirebaseMessaging() {
@@ -106,6 +114,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void initState() {
     super.initState();
     dotenv.load(fileName: ".env");
+    print("GEMINI API KEY: ${dotenv.env['GEMINI_API_KEY']}");
+    _genAI = GenerativeModel(
+      model: 'gemini-pro',
+      apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
+    );
     NotificationService().initNotifications();
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
@@ -302,6 +315,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               },
               icon: const Icon(
                 Icons.report,
+                color: Colors.white,
+              ),
+            ),
+            IconButton(
+              onPressed: _showChatModal,
+              icon: const Icon(
+                Icons.chat,
                 color: Colors.white,
               ),
             ),
@@ -548,5 +568,156 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     } catch (e) {
       print("Error sending destination: $e");
     }
+  }
+
+  Future<String> _fetchIncidentReports() async {
+    final snapshot = await _dbRef.child('incident-reports').get();
+    if (!snapshot.exists) return 'No incident reports found.';
+
+    Map<String, dynamic> reports =
+        Map<String, dynamic>.from(snapshot.value as Map);
+    String reportText = 'Here are the recent incident reports:\n\n';
+
+    reports.forEach((key, value) {
+      final report = Map<String, dynamic>.from(value);
+      reportText += '📍 Location: ${report['address']}\n'
+          '📝 Details: ${report['details']}\n'
+          '🕒 Time: ${report['timestamp']}\n'
+          '📊 Status: ${report['status']}\n\n';
+    });
+
+    return reportText;
+  }
+
+  Future<void> _handleChatInteraction(String userMessage) async {
+    setState(() {
+      _chatMessages.add({
+        'isUser': true,
+        'message': userMessage,
+      });
+      _isChatLoading = true;
+    });
+
+    try {
+      final reports = await _fetchIncidentReports();
+      final prompt = '''
+      Context: You are an emergency response assistant. Use this incident report data:
+      $reports
+      
+      User question: $userMessage
+      
+      Please provide a helpful response based on the incident reports data.
+      ''';
+
+      final content = [Content.text(prompt)];
+      final response = await _genAI.generateContent(content);
+
+      setState(() {
+        _chatMessages.add({
+          'isUser': false,
+          'message': response.text,
+        });
+      });
+    } catch (e) {
+      setState(() {
+        _chatMessages.add({
+          'isUser': false,
+          'message': 'Sorry, I encountered an error: $e',
+        });
+      });
+    } finally {
+      setState(() {
+        _isChatLoading = false;
+      });
+      _chatController.clear();
+    }
+  }
+
+  void _showChatModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: const Text(
+                'Emergency Response Assistant',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _chatMessages.length,
+                itemBuilder: (context, index) {
+                  final message = _chatMessages[index];
+                  return Align(
+                    alignment: message['isUser']
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: message['isUser']
+                            ? Colors.blue[100]
+                            : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(message['message']),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (_isChatLoading)
+              const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: CircularProgressIndicator(),
+              ),
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 8,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _chatController,
+                      decoration: const InputDecoration(
+                        hintText: 'Ask about incident reports...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: () {
+                      if (_chatController.text.isNotEmpty) {
+                        _handleChatInteraction(_chatController.text);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 }

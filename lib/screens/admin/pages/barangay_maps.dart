@@ -9,6 +9,8 @@ import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
 import 'package:logger/logger.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 
 class BarangayMaps extends ConsumerStatefulWidget {
   const BarangayMaps({super.key});
@@ -21,14 +23,19 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   final Completer<GoogleMapController> _controller = Completer();
 
   final Set<Marker> _markers = <Marker>{};
-  final Set<Circle> _circles = <Circle>{};
   List<Map<String, dynamic>> _reports = [];
 //initial marker count value
   int markerIdCounter = 1;
   bool _loading = true;
 
   var logger = Logger(
-    printer: PrettyPrinter(),
+    printer: PrettyPrinter(
+      methodCount: 0,
+      errorMethodCount: 5,
+      lineLength: 50,
+      colors: true,
+      printEmojis: true,
+    ),
   );
 
   final List<LatLng> polygonCoordinates = [
@@ -64,14 +71,31 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
       body: Stack(
         children: [
           GoogleMap(
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(14.598317, 120.985560),
-                zoom: 15,
+            initialCameraPosition: const CameraPosition(
+              target: LatLng(14.598317, 120.985560),
+              zoom: 15,
+            ),
+            mapType: MapType.normal,
+            onMapCreated: (GoogleMapController controller) {
+              if (!_controller.isCompleted) {
+                _controller.complete(controller);
+              }
+            },
+            markers: _markers,
+            polygons: _createPolygon(),
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
+              Factory<ScaleGestureRecognizer>(() => ScaleGestureRecognizer()),
+              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
+              Factory<VerticalDragGestureRecognizer>(
+                () => VerticalDragGestureRecognizer(),
               ),
-              mapType: MapType.normal,
-              onMapCreated: (controller) => _controller.complete(controller),
-              markers: _markers,
-              polygons: _createPolygon()),
+            },
+          ),
+          if (_loading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
           Positioned(
             bottom: 20.0,
             left: 20.0,

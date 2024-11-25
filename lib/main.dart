@@ -8,6 +8,7 @@ import 'package:logger/logger.dart';
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:swiftpath/views/landing_page.dart';
 import 'firebase_options.dart';
 
@@ -24,10 +25,13 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseDatabase.instance.databaseURL = dotenv.env['FIREBASE_DATABASE_URL'];
+
   prefs = await SharedPreferences.getInstance();
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await initializeRoam();
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
