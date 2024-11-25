@@ -9,7 +9,6 @@ import 'package:logger/logger.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:swiftpath/views/landing_page.dart';
-import 'package:swiftpath/views/maps_page.dart';
 import 'firebase_options.dart';
 
 // Roam SDK import
@@ -49,7 +48,7 @@ Future<void> initializeRoam() async {
 
   try {
     Roam.initialize(publishKey: roamAiPublishableKey);
-    ;
+
     logger.d('Roam SDK initialized successfully');
   } catch (e) {
     logger.e('Roam SDK initialization failed: $e');
