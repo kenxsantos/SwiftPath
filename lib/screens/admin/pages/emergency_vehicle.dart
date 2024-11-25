@@ -51,7 +51,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
   Future<void> _getUserLocationAndFetchReports() async {
     position = await _getCurrentPosition();
-    _fetchReports(120.9901827, 14.5965241);
+    _fetchReports(120.985560, 14.598317);
   }
 
   Future<Position> _getCurrentPosition() async {
@@ -202,6 +202,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => ShowRoutes(
+                                geofenceId: report['geofence_id'],
                                 incidentReport: {
                                   'latitude': report['latitude'],
                                   'longitude': report['longitude'],
@@ -209,10 +210,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                               ),
                             ),
                           );
-                          // double longitude = report['longitude'];
-                          // double latitude = report['latitude'];
-                          // await _createTrip(longitude, latitude);
-                          // await _startTrip();
                         },
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
