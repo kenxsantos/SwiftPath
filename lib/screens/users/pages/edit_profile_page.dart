@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -18,6 +21,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _passwordController = TextEditingController();
 
   String? _profilePictureUrl;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -147,6 +151,79 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  Future<void> _uploadProfilePicture() async {
+    final picker = ImagePicker();
+    final pickedFile = await showDialog<XFile>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          actions: [
+            TextButton(
+              child: const Text('Camera'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.camera));
+              },
+            ),
+            TextButton(
+              child: const Text('Gallery'),
+              onPressed: () async {
+                Navigator.of(context)
+                    .pop(await picker.pickImage(source: ImageSource.gallery));
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (pickedFile != null) {
+      try {
+        // Show loading indicator
+        setState(() {
+          _isLoading = true;
+        });
+
+        // Upload image to Firebase Storage
+        String fileName = '${_auth.currentUser!.uid}_profile_picture.jpg';
+        Reference storageRef =
+            FirebaseStorage.instance.ref().child('profile_pictures/$fileName');
+
+        // Upload the file
+        await storageRef.putFile(File(pickedFile.path));
+
+        // Get the download URL
+        String downloadUrl = await storageRef.getDownloadURL();
+
+        // Update profile picture URL in Realtime Database
+        await _dbRef.child('users/${_auth.currentUser!.uid}').update({
+          'profilePictureUrl': downloadUrl,
+        });
+
+        // Update local state
+        setState(() {
+          _profilePictureUrl = downloadUrl;
+          _isLoading = false;
+        });
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated successfully')),
+        );
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Failed to update profile picture: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,87 +257,96 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ],
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Profile Picture Section
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 55,
-                      backgroundImage: _profilePictureUrl != null
-                          ? NetworkImage(_profilePictureUrl!)
-                          : const AssetImage('assets/images/imgdefault.png')
-                              as ImageProvider,
-                      backgroundColor: Colors.grey.shade300,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          // Implement picture upload/change logic here
-                        },
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.grey.shade800,
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Profile Picture Section
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 55,
+                          backgroundImage: _profilePictureUrl != null
+                              ? NetworkImage(_profilePictureUrl!)
+                              : const AssetImage('assets/images/imgdefault.png')
+                                  as ImageProvider,
+                          backgroundColor: Colors.grey.shade300,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _uploadProfilePicture,
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.grey.shade800,
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Form Fields for user information
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _fullNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Full Name',
+                      labelStyle: const TextStyle(fontSize: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Form Fields for user information
-              const SizedBox(height: 10),
-              TextField(
-                controller: _fullNameController,
-                decoration: InputDecoration(
-                  labelText: 'Full Name',
-                  labelStyle: const TextStyle(fontSize: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(fontSize: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      labelStyle: const TextStyle(fontSize: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: const TextStyle(fontSize: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: const TextStyle(fontSize: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    obscureText: true,
                   ),
-                ),
-                obscureText: true,
+                  const SizedBox(height: 20),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }
