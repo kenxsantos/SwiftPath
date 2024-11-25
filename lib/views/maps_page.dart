@@ -110,7 +110,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     NotificationService().initNotifications();
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
-    _connectSocket();
+    // _connectSocket();
     _getCurrentPosition();
   }
 
@@ -331,14 +331,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Location services are not enabled, show error
-      return Future.error('Location services are disabled.');
+      // Show error to user
+      return Future.error(
+          'Location services are disabled. Please enable them.');
     }
 
-    // Check location permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -346,24 +345,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         return Future.error('Location permissions are denied.');
       }
     }
-
     if (permission == LocationPermission.deniedForever) {
-      return Future.error('Location permissions are permanently denied.');
+      return Future.error(
+          'Location permissions are permanently denied. Please enable them in settings.');
     }
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+        distanceFilter: 10,
+      ),
+    ).listen((Position position) {
+      setState(() {
+        _currentPosition = LatLng(position.latitude, position.longitude);
+      });
 
-    // Get the current position
-    final position = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high));
-
-    setState(() {
-      _currentPosition = LatLng(position.latitude, position.longitude);
+      _controller.future.then((GoogleMapController controller) {
+        controller.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentPosition, 15),
+        );
+      }).catchError((error) {
+        print('Error updating map camera: $error');
+      });
     });
-
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(
-      CameraUpdate.newLatLngZoom(_currentPosition, 15),
-    );
   }
 
   void showRoutesPopup() {
