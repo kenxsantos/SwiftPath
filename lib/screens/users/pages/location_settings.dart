@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:swiftpath/components/custom_switch_tile.dart';
@@ -18,7 +19,7 @@ class _LocationSettingsState extends State<LocationSettings> {
   bool isSubscribeEvents = false;
   bool isStartTrackingLocation = false;
   String? myUserId;
-
+  User? user = FirebaseAuth.instance.currentUser;
   @override
   void initState() {
     super.initState();
@@ -43,7 +44,7 @@ class _LocationSettingsState extends State<LocationSettings> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        behavior: SnackBarBehavior.floating,
+        // behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -54,6 +55,19 @@ class _LocationSettingsState extends State<LocationSettings> {
     value ? Roam.startTracking(trackingMode: "active") : Roam.stopTracking();
     _showSnackBar(
       'Tracking Location ${isToggleListener ? 'enable' : 'disabled'}',
+    );
+  }
+
+  void createUserId() {
+    Roam.createUser(
+      description: user?.email ?? "anonymous",
+      callBack: ({user}) {
+        setState(() {
+          final userData = jsonDecode(user!);
+          myUserId = userData["userId"];
+          _showSnackBar('User ID: ${userData["userId"]}');
+        });
+      },
     );
   }
 
@@ -171,6 +185,14 @@ class _LocationSettingsState extends State<LocationSettings> {
             onTap: () => showListenerStatus(),
             title: const Text(
               'Show Status',
+              style: TextStyle(color: Colors.black87),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            onTap: () => createUserId(),
+            title: const Text(
+              'Create New UserID',
               style: TextStyle(color: Colors.black87),
             ),
           ),

@@ -97,9 +97,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const LocationSettings(
-                            userId: '67160b86c45da22b6c686977',
-                          )));
+                      builder: (context) => const LocationSettings()));
             },
             leading: const Icon(Icons.more_horiz_outlined,
                 color: Color.fromARGB(255, 224, 59, 59)),
