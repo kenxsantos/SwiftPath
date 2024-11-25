@@ -2,9 +2,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 // import 'dart:developer' as developer;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_html/flutter_html.dart' as flutter_html;
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -12,7 +14,6 @@ import 'package:fab_circular_menu_plus/fab_circular_menu_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
@@ -38,9 +39,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<Map<String, dynamic>> routes = [];
   List<dynamic> _placesList = [];
   Set<Marker> _markers = <Marker>{};
-  // Replace with your backend URL
+
   late IO.Socket _socket;
-  LatLng _currentPosition = const LatLng(0, 0); // Default position
+  LatLng _currentPosition = const LatLng(0, 0);
   bool showAlternativeRoutes = false;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -110,11 +111,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
     _connectSocket();
+    _getCurrentPosition();
   }
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://f9fd-136-158-25-188.ngrok-free.app";
+    String socketUrl = "https://f9d7-27-126-152-3.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -158,6 +160,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             };
           }).toList();
         });
+
+        if (routes.isNotEmpty) {
+          String routesPolyline = routes[0]['overview_polyline'];
+          List<LatLng> poly = decodePolyline(routesPolyline);
+          setState(() {
+            polylines.add(Polyline(
+              polylineId: const PolylineId('route_polyline'),
+              points: poly,
+              color: Colors.blue, // Customize polyline color
+              width: 5, // Customize polyline width
+            ));
+          });
+          print("First overview_polyline: ${routes[0]['overview_polyline']}");
+        } else {
+          print("No routes found.");
+        }
       } else {
         print("Invalid data format received: $data");
       }
@@ -206,16 +224,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           target: LatLng(14.4964995, 120.9996993),
                           zoom: 10.4746),
                       mapType: MapType.normal,
-                      myLocationButtonEnabled: true,
                       onMapCreated: (controller) {
                         _controller.complete(controller);
                       },
+                      myLocationButtonEnabled: true,
                       myLocationEnabled: true,
                       markers: _markers,
                       polylines: polylines,
                     ),
                   ),
-                  // showGPSlocator(),
                   autoCompleteSearchBar(),
                   Positioned(
                     bottom: 130.0,
@@ -306,6 +323,45 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ]),
+    );
+  }
+
+  Future<void> _getCurrentPosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled, show error
+      return Future.error('Location services are disabled.');
+    }
+
+    // Check location permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied.');
+    }
+
+    // Get the current position
+    final position = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high));
+
+    setState(() {
+      _currentPosition = LatLng(position.latitude, position.longitude);
+    });
+
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(
+      CameraUpdate.newLatLngZoom(_currentPosition, 15),
     );
   }
 
@@ -410,16 +466,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void setAlterativeRoutesPolyline(String overviewPolyline) {
-    // Decode the polyline into LatLng points
     final decodedPolyline = decodePolyline(overviewPolyline);
-
-    // Add the polyline to your map (assuming you're using a controller)
     setState(() {
       polylines.add(Polyline(
-        polylineId: PolylineId('route_polyline'),
+        polylineId: const PolylineId('route_polyline'),
         points: decodedPolyline,
-        color: Colors.blue, // Customize polyline color
-        width: 5, // Customize polyline width
+        color: Colors.blue,
+        width: 5,
       ));
     });
 
@@ -507,7 +560,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 };
               });
-              //provide me a code for sending a destination to the server
               requestRoutesToServer(destinationLat, destinationLng);
               _focusNode.unfocus(); // Remove focus
               _destinationController.clear();
@@ -520,19 +572,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void requestRoutesToServer(
       double destinationLat, double destinationLng) async {
-    final String? apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-
-    const String backendUrl =
-        "https://f9fd-136-158-25-188.ngrok-free.app/destination";
+    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
     try {
-      // Payload for the backend
       final Map<String, dynamic> payload = {
-        "destination": {"lat": destinationLat, "lng": destinationLng}
+        "destination": {"lat": destinationLat, "lng": destinationLng},
+        "origin": {
+          "lat": _currentPosition.latitude,
+          "lng": _currentPosition.longitude
+        },
       };
-
-      // Send POST request to the backend
       final response = await http.post(
-        Uri.parse(backendUrl),
+        Uri.parse('$backendUrl/current-location'),
         headers: {
           "Content-Type": "application/json",
         },
@@ -540,7 +590,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
 
       if (response.statusCode == 200) {
-        print("Destination sent successfully.");
+        print("Location sent successfully. $payload");
         print("Response: ${response.body}");
       } else {
         print("Failed to send destination: ${response.body}");
