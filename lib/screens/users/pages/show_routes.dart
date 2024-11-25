@@ -1,18 +1,22 @@
 import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 
 class ShowRoutes extends ConsumerStatefulWidget {
   final Map<String, dynamic> incidentReport;
+  final String geofenceId;
 
   const ShowRoutes({
     super.key,
+    required this.geofenceId,
     required this.incidentReport,
   });
 
@@ -118,6 +122,31 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                               ),
                             },
                             polylines: _polylines,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 20,
+                          height: 50,
+                          left: 20,
+                          width: MediaQuery.of(context).size.width * 0.9,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Colors.red.shade400, // Background color
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                    10), // Rounded corners
+                              ),
+                            ),
+                            onPressed: () => _showConfirmationDialog(
+                                context), // Show confirmation dialog
+                            child: const Text(
+                              'Mark as Resolved',
+                              style: TextStyle(
+                                fontSize: 16, // Adjust font size
+                                color: Colors.white, // Text color
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -255,6 +284,89 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         incidentLocation,
       );
     });
+  }
+
+  void _showConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Confirm Action"),
+          content: const Text("Are you sure you want to take this action?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade400, // Confirm button color
+              ),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                actionTakenSuccessfully(); // Call the action method
+              },
+              child: const Text("Confirm"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void actionTakenSuccessfully() async {
+    final DatabaseReference dbRef =
+        FirebaseDatabase.instance.ref("incident-reports");
+
+    String geofenceId = widget.geofenceId;
+    try {
+      // Query the database to find reports with the specific geofenceId
+      final DatabaseEvent event =
+          await dbRef.orderByChild('geofence_id').equalTo(geofenceId).once();
+
+      if (event.snapshot.value != null) {
+        // Get all matching reports
+        final Map<String, dynamic> reports =
+            Map<String, dynamic>.from(event.snapshot.value as Map);
+
+        // Update the status of each matching report to 'Done'
+        for (final reportKey in reports.keys) {
+          await dbRef.child(reportKey).update({'status': 'Done'});
+        }
+
+        // Show a success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Action taken successfully!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Navigate to BarangayMaps
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BarangayMaps()),
+        );
+      } else {
+        // No reports found
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No matching reports found.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (error) {
+      // Show an error message if the update fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $error'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _getPolylinesPoints(LatLng startLocation, LatLng endLocation) async {
