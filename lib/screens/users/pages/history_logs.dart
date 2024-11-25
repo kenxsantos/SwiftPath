@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class HistoryLogs extends StatefulWidget {
@@ -10,18 +11,19 @@ class HistoryLogs extends StatefulWidget {
 
 class _HistoryLogsState extends State<HistoryLogs> {
   late IO.Socket _socket;
-  final List<String> _logs = []; // Store logs here
-  bool _isLoading = true; // Track loading state
+  final List<String> _logs = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    dotenv.load(fileName: ".env");
     _initializeSocket();
   }
 
   void _initializeSocket() {
     _socket = IO.io(
-      'https://11f2-136-158-25-188.ngrok-free.app',
+      dotenv.env['GOOGLE_API_KEY'],
       IO.OptionBuilder()
           .setPath('/webhook')
           .setTransports(['websocket'])
