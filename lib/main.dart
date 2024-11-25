@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'dart:math';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +21,21 @@ SharedPreferences? prefs;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  try {
+    await dotenv.load(fileName: ".env");
+
+    // Safe way to print env variables
+    print("\nLoaded environment variables:");
+    if (dotenv.env['GEMINI_API_KEY'] != null) {
+      print(
+          'GEMINI_API_KEY: ${dotenv.env['GEMINI_API_KEY']?.substring(0, 5)}...');
+    } else {
+      print('GEMINI_API_KEY not found');
+    }
+  } catch (e) {
+    print("Error loading .env file: $e");
+  }
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

@@ -113,12 +113,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
-    dotenv.load(fileName: ".env");
-    print("GEMINI API KEY: ${dotenv.env['GEMINI_API_KEY']}");
-    _genAI = GenerativeModel(
-      model: 'gemini-pro',
-      apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-    );
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    print("GEMINI API KEY in maps_page: $apiKey");
+
+    if (apiKey == null || apiKey.isEmpty) {
+      print("Warning: GEMINI_API_KEY is not available");
+      // Handle the error case appropriately
+    } else {
+      _genAI = GenerativeModel(
+        model: 'gemini-pro',
+        apiKey: apiKey,
+      );
+    }
+
     NotificationService().initNotifications();
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
