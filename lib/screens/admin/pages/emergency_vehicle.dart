@@ -84,7 +84,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    const int radiusInMeters = 500;
+    const int radiusInMeters = 650;
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -196,25 +196,29 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () async {
-                          position = await _getCurrentPosition();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ShowRoutes(
-                                geofenceId: report['geofence_id'],
-                                incidentReport: {
-                                  'latitude': report['latitude'],
-                                  'longitude': report['longitude'],
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: report['status'] == 'Pending'
+                            ? () async {
+                                final position = await _getCurrentPosition();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ShowRoutes(
+                                      geofenceId: report['geofence_id'],
+                                      incidentReport: {
+                                        'latitude': report['latitude'],
+                                        'longitude': report['longitude'],
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null, // No action for statuses other than 'Pending'
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 10),
-                          backgroundColor: Colors.red,
+                          backgroundColor: report['status'] == 'Done'
+                              ? Colors.grey // Disabled state color
+                              : Colors.red, // Active state color
                         ),
                         child: const Text(
                           'Take Action',
