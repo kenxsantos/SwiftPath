@@ -5,24 +5,36 @@ import 'dart:convert';
 import 'package:roam_flutter/roam_flutter.dart';
 
 class LocationSettings extends StatefulWidget {
-  const LocationSettings({super.key, required this.userId});
-
-  final String userId;
-
+  const LocationSettings({super.key});
   @override
   State<LocationSettings> createState() => _LocationSettingsState();
 }
 
 class _LocationSettingsState extends State<LocationSettings> {
-  bool isToggleListener = true;
-  bool isToggleEvents = true;
-  bool isSubscribeLocations = true;
-  bool isSubscribeUserLocations = true;
-  bool isSubscribeEvents = true;
+  bool isToggleListener = false;
+  bool isToggleEvents = false;
+  bool isSubscribeLocations = false;
+  bool isSubscribeUserLocations = false;
+  bool isSubscribeEvents = false;
+  bool isStartTrackingLocation = false;
+  String? myUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    Roam.getListenerStatus(
+      callBack: ({user}) {
+        setState(() {
+          final userData = jsonDecode(user!);
+          myUserId = userData["userId"];
+        });
+      },
+    );
+  }
 
   // Utility to copy User ID
   void _copyUserId() {
-    Clipboard.setData(ClipboardData(text: widget.userId));
+    Clipboard.setData(ClipboardData(text: myUserId ?? "User ID"));
     _showSnackBar('User ID copied to clipboard!');
   }
 
@@ -34,6 +46,33 @@ class _LocationSettingsState extends State<LocationSettings> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
+    );
+  }
+
+  void _startTrackingLocation(bool value) {
+    setState(() => isStartTrackingLocation = value);
+    value ? Roam.startTracking(trackingMode: "active") : Roam.stopTracking();
+    _showSnackBar(
+      'Tracking Location ${isToggleListener ? 'enable' : 'disabled'}',
+    );
+  }
+
+  void showListenerStatus() {
+    Roam.getListenerStatus(
+      callBack: ({user}) {
+        setState(() {
+          final userData = jsonDecode(user!);
+          myUserId = userData["userId"];
+          _showSnackBar('Listener Status:\n'
+              'User ID: ${userData["userId"]}\n'
+              'Events: ${userData["events"]}\n'
+              'Locations: ${userData["locations"]}\n'
+              'Location Events: ${userData["locationEvents"]}\n'
+              'Geofence Events: ${userData["geofenceEvents"]}\n'
+              'Trips Events: ${userData["tripsEvents"]}\n'
+              'Moving Geofence Events: ${userData["movingGeofenceEvents"]}\n');
+        });
+      },
     );
   }
 
@@ -87,7 +126,7 @@ class _LocationSettingsState extends State<LocationSettings> {
   // Subscribe User Locations
   void _subscribeUserLocations(bool value) {
     setState(() => isSubscribeUserLocations = value);
-    Roam.subscribeUserLocation(userId: widget.userId);
+    Roam.subscribeUserLocation(userId: myUserId ?? "User ID");
     _showSnackBar(
       'Subscribe User Location ${isSubscribeUserLocations ? 'enable' : 'disabled'}',
     );
@@ -115,7 +154,7 @@ class _LocationSettingsState extends State<LocationSettings> {
           ListTile(
             leading: const Icon(Icons.account_circle, color: Colors.blue),
             title: Text(
-              widget.userId,
+              myUserId?.isEmpty ?? true ? 'User ID' : myUserId!,
               style: const TextStyle(color: Colors.black87),
             ),
             trailing: IconButton(
@@ -125,6 +164,14 @@ class _LocationSettingsState extends State<LocationSettings> {
             subtitle: const Text(
               'Your unique user ID',
               style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            onTap: () => showListenerStatus(),
+            title: const Text(
+              'Show Status',
+              style: TextStyle(color: Colors.black87),
             ),
           ),
           const Divider(),
@@ -157,10 +204,17 @@ class _LocationSettingsState extends State<LocationSettings> {
           ),
           const Divider(),
           CustomSwitchTile(
-            title: 'Subscribe User Locations',
+            title: 'Subscribe Events',
             subtitle: 'Subscribe to location updates',
             value: isSubscribeEvents,
             onChanged: _subscribeEvents,
+          ),
+          const Divider(),
+          CustomSwitchTile(
+            title: 'Start Tracking Location',
+            subtitle: 'Track your location',
+            value: isStartTrackingLocation,
+            onChanged: _startTrackingLocation,
           ),
         ],
       ),
