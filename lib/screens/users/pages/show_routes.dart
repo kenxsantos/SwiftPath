@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:uuid/uuid.dart';
@@ -56,7 +57,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
 
   bool _isLoading = false;
   List<Map<String, dynamic>> routes = [];
-
+  String? myUserId;
   late IO.Socket _socket;
   LatLng _currentPosition = const LatLng(0, 0);
   Set<Polyline> polylines = <Polyline>{};
@@ -75,6 +76,98 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       widget.origin['lng'],
     );
     requestRoutesToServer(origin, destination);
+    createUser();
+  }
+
+  void createUser() async {
+    // await Roam.createUser(
+    //   description: "emergency_vehicle",
+    //   callBack: ({user}) {
+    //     setState(() {
+    //       final userData = jsonDecode(user!);
+    //       myUserId = userData["userId"];
+    //     });
+    //   },
+    // );
+
+    // await _createMovingGeofence(myUserId ?? 'No User ID');
+    // Push incident report data to Firebase
+    await Roam.getListenerStatus(
+      callBack: ({user}) {
+        setState(() {
+          final userData = jsonDecode(user!);
+          myUserId = userData["userId"];
+        });
+      },
+    );
+    await Roam.startTracking(trackingMode: "active");
+  }
+
+  Future<void> _createMovingGeofence(String userId) async {
+    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+    final String roamAiApiKey =
+        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
+
+    // Geofence data to be sent to the Roam AI API
+    final Map<String, dynamic> geofenceData = {
+      "geometry_type": "circle",
+      "geometry_radius": 500,
+      "color_code": "FF0000",
+      "is_enabled": true,
+      "only_once": true,
+      "users": [
+        userId,
+        "674489ffacae092dfe16fa86",
+      ]
+    };
+
+    // Send a request to the Roam AI API
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
+        headers: {
+          'Api-Key': roamAiApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(geofenceData),
+      );
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> responseData =
+            jsonDecode(response.body)['data'];
+
+        // Store geofence data in Firebase
+        final Map<String, dynamic> firebaseGeofenceData = {
+          'latitude': _currentPosition.latitude,
+          'longitude': _currentPosition.longitude,
+          "geofence_id": responseData["id"],
+          "account_id": responseData["account_id"],
+          "project_id": responseData["project_id"],
+          "geometry_type": responseData["geometry_type"],
+          "geometry_radius": responseData["geometry_radius"],
+          "is_enabled": responseData["is_enabled"],
+          "is_deleted": responseData["is_deleted"],
+          "only_once": responseData["only_once"],
+          "users": responseData["users"],
+          "created_at": responseData["created_at"],
+          "updated_at": responseData["updated_at"],
+        };
+
+        await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
+        logger.i('Moving geofence created and data stored successfully.');
+        ('Success', 'Geofence created successfully.');
+      } else {
+        logger.e('Error creating moving geofence: ${response.body}');
+        _showDialog('Error', 'Failed to create geofence.');
+      }
+    } catch (e) {
+      logger.e('Error creating moving geofence: $e');
+      _showDialog('Error', 'An error occurred while creating the geofence.');
+    }
+  }
+
+  void _showDialog(String title, String message) {
+    logger.i('$title: $message');
   }
 
   @override
@@ -143,7 +236,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           .build(),
     );
     _socket.connect();
-    _socket.on('location_update', (data) {
+    _socket.on('location_update', (data) async {
       print('Location Update: $data');
       if (data is Map<String, dynamic>) {
         final coordinates = data['coordinates']['coordinates'];
@@ -151,7 +244,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           _currentPosition = LatLng(coordinates[1], coordinates[0]);
         });
       }
-      // Move the map camera to the new position
       _moveCameraToCurrentPosition();
     });
 
@@ -202,6 +294,23 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         _isLoading = false;
       });
     });
+  }
+
+  Future<void> _updateFirebaseLocation(
+      double latitude, double longitude) async {
+    try {
+      // Assuming each vehicle has a unique ID, e.g., "vehicle123"
+      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+      await dbRef.child('emergency-vehicles/$myUserId').set({
+        'latitude': latitude,
+        'longitude': longitude,
+        'status': 'active',
+      });
+
+      print("Firebase location updated: $latitude, $longitude");
+    } catch (error) {
+      print("Failed to update Firebase: $error");
+    }
   }
 
   Future<void> _moveCameraToCurrentPosition() async {
