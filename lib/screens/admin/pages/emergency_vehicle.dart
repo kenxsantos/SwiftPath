@@ -27,6 +27,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   String? myTrip;
   String? tripId;
   String? response;
+  String? myUserId;
 
   var logger = Logger(
     printer: PrettyPrinter(),
@@ -197,16 +198,19 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                     Center(
                       child: TextButton(
                         onPressed: report['status'] == 'Pending'
-                            ? () async {
-                                final position = await _getCurrentPosition();
+                            ? () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ShowRoutes(
                                       geofenceId: report['geofence_id'],
-                                      incidentReport: {
-                                        'latitude': report['latitude'],
-                                        'longitude': report['longitude'],
+                                      destination: {
+                                        'lat': report['latitude'],
+                                        'lng': report['longitude'],
+                                      },
+                                      origin: {
+                                        'lat': position.latitude,
+                                        'lng': position.longitude,
                                       },
                                     ),
                                   ),
@@ -362,6 +366,26 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     );
   }
 
+  void takeAction() async {
+    // await Roam.createUser(
+    //   description: "emergency_vehicle",
+    //   callBack: ({user}) {
+    //     setState(() {
+    //       final userData = jsonDecode(user!);
+    //       myUserId = userData["userId"];
+    //     });
+    //   },
+    // );
+
+    // await Roam.startTrip(({roamTripResponse}) {
+    //   String responseString = jsonEncode(roamTripResponse?.toJson());
+    //   print('Start trip response: $responseString');
+    // }, ({error}) {
+    //   String errorString = jsonEncode(error?.toJson());
+    //   print(errorString);
+    // });
+  }
+
   Future<void> _createMovingGeofence() async {
     final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
     final String roamAiApiKey =
@@ -374,11 +398,11 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
       "color_code": "FF0000",
       "is_enabled": true,
       "only_once": true,
-      "users": [
-        "67160e2fc45da22ca9d0f61f",
-        "6718a906acae090b0ad82ebf",
-        "6718a93a8d38d6102302fb9b"
-      ]
+      // "users": [
+      //   "67160e2fc45da22ca9d0f61f",
+      //   "6718a906acae090b0ad82ebf",
+      //   "6718a93a8d38d6102302fb9b"
+      // ]
     };
 
     // Send a request to the Roam AI API
@@ -426,48 +450,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
   void _showDialog(String title, String message) {
     logger.i('$title: $message');
-  }
-
-  Future<void> _createTrip(double longitude, double latitude) async {
-    try {
-      // Create a trip stop with the given latitude and longitude
-      RoamTripStops stop = RoamTripStops(600, [longitude, latitude]);
-      RoamTrip roamTrip = RoamTrip(isLocal: true);
-      roamTrip.stop?.add(stop);
-
-      await Roam.createTrip(roamTrip, ({roamTripResponse}) {
-        String responseString = jsonEncode(roamTripResponse?.toJson());
-        logger.d('Create online trip response: $responseString');
-        setState(() {
-          tripId = roamTripResponse!.tripDetails!.id;
-          response = 'Create online trip response: $responseString';
-          logger.f(jsonEncode(roamTripResponse.toJson()));
-        });
-      }, ({error}) {
-        String errorString = jsonEncode(error?.toJson());
-        logger.d(errorString);
-      });
-    } catch (e) {
-      logger.e('Error creating trip: $e');
-    }
-  }
-
-  Future<void> _startTrip() async {
-    try {
-      await Roam.startTrip(({roamTripResponse}) {
-        String responseString = jsonEncode(roamTripResponse?.toJson());
-        logger.d('Start trip response: $responseString');
-        setState(() {
-          tripId = roamTripResponse?.tripDetails?.id;
-          response = 'Start trip response: $responseString';
-        });
-      }, ({error}) {
-        String errorString = jsonEncode(error?.toJson());
-        logger.d(errorString);
-      });
-    } catch (e) {
-      logger.e('Error starting trip: $e');
-    }
   }
 
   Future<String> _getAddressFromLatLng(
