@@ -8,6 +8,7 @@ class NotificationService {
     await _messaging.subscribeToTopic('geofence_entry_notifications');
     await _messaging.subscribeToTopic('geofence_exit_notifications');
     await _messaging.subscribeToTopic('geofence_dwell_notifications');
+    await _messaging.subscribeToTopic('moving_geofence_nearby_notifications');
     // await _messaging.subscribeToTopic('location_change_notifications');
   }
 
