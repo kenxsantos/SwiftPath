@@ -31,12 +31,30 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     printer: PrettyPrinter(),
   );
 
+  final List<LatLng> polygonCoordinates = [
+    const LatLng(14.603723, 120.981973),
+    const LatLng(14.596761, 120.980702),
+    const LatLng(14.594853, 120.982842),
+    const LatLng(14.595495, 120.984411),
+    const LatLng(14.595278, 120.985546),
+    const LatLng(14.595347, 120.985927),
+    const LatLng(14.595034, 120.987186),
+    const LatLng(14.593315, 120.989588),
+    const LatLng(14.593480, 120.990356),
+    const LatLng(14.595507, 120.991074),
+    const LatLng(14.596340, 120.990907),
+    const LatLng(14.597527, 120.990640),
+    const LatLng(14.598568, 120.991062),
+    const LatLng(14.600145, 120.991415),
+    const LatLng(14.603147, 120.985040),
+    const LatLng(14.603723, 120.981973), // Close the polygon
+  ];
+
   @override
   void initState() {
     super.initState();
-    _fetchUserReports(120.989861, 14.5973853);
+    _fetchUserReports(120.985560, 14.598317);
     _listenToDatabaseChanges();
-    addGeofenceRadius();
   }
 
   @override
@@ -46,18 +64,14 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: LatLng(
-                14.5965241,
-                120.9901827,
+              initialCameraPosition: const CameraPosition(
+                target: LatLng(14.598317, 120.985560),
+                zoom: 15,
               ),
-              zoom: 15,
-            ),
-            mapType: MapType.normal,
-            onMapCreated: (controller) => _controller.complete(controller),
-            markers: _markers,
-            circles: _circles,
-          ),
+              mapType: MapType.normal,
+              onMapCreated: (controller) => _controller.complete(controller),
+              markers: _markers,
+              polygons: _createPolygon()),
           Positioned(
             bottom: 20.0,
             left: 20.0,
@@ -81,19 +95,15 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
   void _listenToDatabaseChanges() {
     final DatabaseReference dbRef =
         FirebaseDatabase.instance.ref("incident-reports");
-    dbRef.onChildAdded.listen((DatabaseEvent event) {
-      _showSnackbar("New incident report added!");
-      _fetchUserReports(120.9901827, 14.5965241);
-    });
 
     dbRef.onChildChanged.listen((DatabaseEvent event) {
       _showSnackbar("An incident report was updated!");
-      _fetchUserReports(120.9901827, 14.5965241);
+      _fetchUserReports(120.985560, 14.598317);
     });
 
     dbRef.onChildRemoved.listen((DatabaseEvent event) {
       _showSnackbar("An incident report was deleted!");
-      _fetchUserReports(120.9901827, 14.5965241);
+      _fetchUserReports(120.985560, 14.598317);
     });
   }
 
@@ -115,7 +125,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     });
     // setCircle(const LatLng(120.9859236, 14.6006512));
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    const int radiusInMeters = 500;
+    const int radiusInMeters = 650;
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -168,6 +178,8 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
           _loading = false;
         });
 
+        _showSnackbar("${_reports.length} incident reports found.");
+
         logger.i(
             'Fetched coordinates successfully: ${_reports.length} locations found.');
       } catch (e) {
@@ -184,21 +196,16 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     }
   }
 
-  void addGeofenceRadius() async {
-    final GoogleMapController controller = await _controller.future;
-    const LatLng geofenceLocation = LatLng(14.5963928, 120.9907785);
-    controller.animateCamera(CameraUpdate.newCameraPosition(
-        const CameraPosition(target: geofenceLocation, zoom: 15)));
-    setState(() {
-      _circles.add(Circle(
-        circleId: const CircleId('circle_1'),
-        center: geofenceLocation,
-        fillColor: Colors.blue.withOpacity(0.1),
-        radius: 500.0,
-        strokeColor: Colors.blue,
-        strokeWidth: 1,
-      ));
-    });
+  Set<Polygon> _createPolygon() {
+    return {
+      Polygon(
+        polygonId: const PolygonId('santo_nino_polygon'),
+        points: polygonCoordinates, // Use the converted coordinates
+        fillColor: Colors.red.withOpacity(0.3),
+        strokeColor: Colors.red,
+        strokeWidth: 2,
+      ),
+    };
   }
 
   void setMarker(LatLng point, {String? info}) {
