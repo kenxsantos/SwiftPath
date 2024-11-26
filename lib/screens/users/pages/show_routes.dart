@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:roam_flutter/roam_flutter.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:swiftpath/components/location_tracking.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
@@ -31,6 +32,9 @@ class ShowRoutes extends ConsumerStatefulWidget {
 }
 
 class _ShowRoutesState extends ConsumerState<ShowRoutes> {
+  final LocationTracker _locationTracker = LocationTracker();
+  LatLng? _currentLocation;
+
   final String googleMapKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   final Completer<GoogleMapController> _controller = Completer();
   final LocationSettings locationSettings = const LocationSettings(
@@ -57,13 +61,18 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
 
   bool _isLoading = false;
   List<Map<String, dynamic>> routes = [];
-  String? myUserId;
+  String myUserId = "emergency-vehicle-1";
   late IO.Socket _socket;
   LatLng _currentPosition = const LatLng(0, 0);
   Set<Polyline> polylines = <Polyline>{};
   @override
   void initState() {
     super.initState();
+    _locationTracker.listenToLocationUpdates("testing", (LatLng location) {
+      setState(() {
+        _currentLocation = location;
+      });
+    });
     _getCurrentPosition();
     setCustomMarkerIcon();
     _connectSocket();
@@ -75,8 +84,8 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       widget.origin['lat'],
       widget.origin['lng'],
     );
-    requestRoutesToServer(origin, destination);
-    createUser();
+    // requestRoutesToServer(origin, destination);
+    // createUser();
   }
 
   void createUser() async {
@@ -225,7 +234,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void _connectSocket() {
-    String socketUrl = "https://d3f0-136-158-25-188.ngrok-free.app";
+    String socketUrl = "https://bd17-120-29-76-216.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -461,6 +470,11 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
       });
+
+      requestRoutesToServer(
+        LatLng(position.latitude, position.longitude),
+        LatLng(destination.latitude, destination.longitude),
+      );
 
       _controller.future.then((GoogleMapController controller) {
         controller.animateCamera(
