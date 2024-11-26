@@ -72,6 +72,7 @@ dependencies:
   latlong2: ^0.9.1
   flutter_html: ^3.0.0-beta.2
   google_generative_ai: ^0.2.0
+  flutter_tts: ^3.8.5
 
 
 
@@ -103,6 +104,7 @@ flutter:
     - assets/images/icons/
     - assets/animassets/
     - .env
+    - assets/images/ambulance.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
