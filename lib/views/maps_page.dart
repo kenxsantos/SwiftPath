@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 // import 'dart:developer' as developer;
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_html/flutter_html.dart' as flutter_html;
 import 'package:geolocator/geolocator.dart';
@@ -31,6 +32,9 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  final String emergencyVehicleId = "emergency-vehicle-1";
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+  late GoogleMapController _mapController;
   Timer? _debounce;
   TextEditingController _originController = TextEditingController();
   final String googleApiKey = dotenv.env['GOOGLE_API_KEY'] ?? '';
@@ -41,7 +45,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Set<Marker> _markers = <Marker>{};
 
   late IO.Socket _socket;
-  LatLng _currentPosition = const LatLng(0, 0);
+  LatLng? _currentPosition;
+  LatLng? _emergencyVehicleLocation;
   bool showAlternativeRoutes = false;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -110,13 +115,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     NotificationService().initNotifications();
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
-    // _connectSocket();
     _getCurrentPosition();
+    _listenToEmergencyVehicleLocation();
+    // _connectSocket();
   }
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://d3f0-136-158-25-188.ngrok-free.app";
+    String socketUrl = "https://bd17-120-29-76-216.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -193,7 +199,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void dispose() {
     _destinationController.dispose();
     _focusNode.dispose();
-
     _socket.dispose();
     super.dispose();
   }
@@ -203,9 +208,85 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: _currentPosition, zoom: 15),
+        CameraPosition(target: _currentPosition!, zoom: 15),
       ),
     );
+  }
+
+  void _updateCurrentLocationMarker() {
+    _markers
+        .removeWhere((marker) => marker.markerId.value == "currentLocation");
+    _markers.add(Marker(
+      markerId: const MarkerId("currentLocation"),
+      position: _currentPosition!,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      infoWindow: const InfoWindow(title: "Your Location"),
+    ));
+  }
+
+  void _listenToEmergencyVehicleLocation() {
+    _dbRef
+        .child('emergency-vehicle-location/$emergencyVehicleId/origin')
+        .onValue
+        .listen((DatabaseEvent event) {
+      if (event.snapshot.exists) {
+        final data = event.snapshot.value as Map;
+        final latitude = data['latitude'];
+        final longitude = data['longitude'];
+
+        if (latitude != null && longitude != null) {
+          setState(() {
+            _emergencyVehicleLocation = LatLng(latitude, longitude);
+            _updateEmergencyVehicleMarker();
+            _moveCameraToIncludeLocations();
+          });
+        }
+      } else {
+        print(
+            "No emergency vehicle location found for ID: $emergencyVehicleId");
+      }
+    });
+  }
+
+  void _moveCameraToIncludeLocations() {
+    if (_currentPosition != null && _emergencyVehicleLocation != null) {
+      _mapController.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(
+              _currentPosition!.latitude < _emergencyVehicleLocation!.latitude
+                  ? _currentPosition!.latitude
+                  : _emergencyVehicleLocation!.latitude,
+              _currentPosition!.longitude < _emergencyVehicleLocation!.longitude
+                  ? _currentPosition!.longitude
+                  : _emergencyVehicleLocation!.longitude,
+            ),
+            northeast: LatLng(
+              _currentPosition!.latitude > _emergencyVehicleLocation!.latitude
+                  ? _currentPosition!.latitude
+                  : _emergencyVehicleLocation!.latitude,
+              _currentPosition!.longitude > _emergencyVehicleLocation!.longitude
+                  ? _currentPosition!.longitude
+                  : _emergencyVehicleLocation!.longitude,
+            ),
+          ),
+          50.0, // Padding for the bounds
+        ),
+      );
+    }
+  }
+
+  void _updateEmergencyVehicleMarker() {
+    if (_emergencyVehicleLocation != null) {
+      _markers
+          .removeWhere((marker) => marker.markerId.value == "emergencyVehicle");
+      _markers.add(Marker(
+        markerId: const MarkerId("emergencyVehicle"),
+        position: _emergencyVehicleLocation!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: const InfoWindow(title: "Emergency Vehicle"),
+      ));
+    }
   }
 
   @override
@@ -358,11 +439,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ).listen((Position position) {
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
+        _updateCurrentLocationMarker();
+        _moveCameraToIncludeLocations();
       });
 
       _controller.future.then((GoogleMapController controller) {
         controller.animateCamera(
-          CameraUpdate.newLatLngZoom(_currentPosition, 15),
+          CameraUpdate.newLatLngZoom(_currentPosition!, 15),
         );
       }).catchError((error) {
         print('Error updating map camera: $error');
@@ -583,8 +666,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final Map<String, dynamic> payload = {
         "destination": {"lat": destinationLat, "lng": destinationLng},
         "origin": {
-          "lat": _currentPosition.latitude,
-          "lng": _currentPosition.longitude
+          "lat": _currentPosition?.latitude,
+          "lng": _currentPosition?.longitude
         },
       };
       final response = await http.post(
