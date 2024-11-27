@@ -17,10 +17,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:swiftpath/components/location_tracking.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/admin_maps.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
+import 'package:swiftpath/screens/users/pages/tracking.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 
@@ -32,7 +34,6 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  final String emergencyVehicleId = "emergency-vehicle-1";
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   late GoogleMapController _mapController;
   Timer? _debounce;
@@ -116,13 +117,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
     _getCurrentPosition();
-    _listenToEmergencyVehicleLocation();
-    // _connectSocket();
+    _connectSocket();
   }
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://bd17-120-29-76-216.ngrok-free.app";
+    String socketUrl = "https://6c3c-120-29-76-216.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -213,82 +213,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void _updateCurrentLocationMarker() {
-    _markers
-        .removeWhere((marker) => marker.markerId.value == "currentLocation");
-    _markers.add(Marker(
-      markerId: const MarkerId("currentLocation"),
-      position: _currentPosition!,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      infoWindow: const InfoWindow(title: "Your Location"),
-    ));
-  }
-
-  void _listenToEmergencyVehicleLocation() {
-    _dbRef
-        .child('emergency-vehicle-location/$emergencyVehicleId/origin')
-        .onValue
-        .listen((DatabaseEvent event) {
-      if (event.snapshot.exists) {
-        final data = event.snapshot.value as Map;
-        final latitude = data['latitude'];
-        final longitude = data['longitude'];
-
-        if (latitude != null && longitude != null) {
-          setState(() {
-            _emergencyVehicleLocation = LatLng(latitude, longitude);
-            _updateEmergencyVehicleMarker();
-            _moveCameraToIncludeLocations();
-          });
-        }
-      } else {
-        print(
-            "No emergency vehicle location found for ID: $emergencyVehicleId");
-      }
-    });
-  }
-
-  void _moveCameraToIncludeLocations() {
-    if (_currentPosition != null && _emergencyVehicleLocation != null) {
-      _mapController.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              _currentPosition!.latitude < _emergencyVehicleLocation!.latitude
-                  ? _currentPosition!.latitude
-                  : _emergencyVehicleLocation!.latitude,
-              _currentPosition!.longitude < _emergencyVehicleLocation!.longitude
-                  ? _currentPosition!.longitude
-                  : _emergencyVehicleLocation!.longitude,
-            ),
-            northeast: LatLng(
-              _currentPosition!.latitude > _emergencyVehicleLocation!.latitude
-                  ? _currentPosition!.latitude
-                  : _emergencyVehicleLocation!.latitude,
-              _currentPosition!.longitude > _emergencyVehicleLocation!.longitude
-                  ? _currentPosition!.longitude
-                  : _emergencyVehicleLocation!.longitude,
-            ),
-          ),
-          50.0, // Padding for the bounds
-        ),
-      );
-    }
-  }
-
-  void _updateEmergencyVehicleMarker() {
-    if (_emergencyVehicleLocation != null) {
-      _markers
-          .removeWhere((marker) => marker.markerId.value == "emergencyVehicle");
-      _markers.add(Marker(
-        markerId: const MarkerId("emergencyVehicle"),
-        position: _emergencyVehicleLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: const InfoWindow(title: "Emergency Vehicle"),
-      ));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -355,6 +279,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           fabOpenIcon: const Icon(Icons.menu, color: Colors.white),
           fabCloseIcon: const Icon(Icons.close, color: Colors.white),
           children: [
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EmergencyMap()),
+                );
+              },
+              icon: const Icon(
+                Icons.location_on,
+                color: Colors.white,
+              ),
+            ),
             IconButton(
               onPressed: () {
                 Navigator.push(
@@ -439,8 +375,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ).listen((Position position) {
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
-        _updateCurrentLocationMarker();
-        _moveCameraToIncludeLocations();
       });
 
       _controller.future.then((GoogleMapController controller) {
