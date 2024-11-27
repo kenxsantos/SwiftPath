@@ -61,10 +61,12 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
 
   bool _isLoading = false;
   List<Map<String, dynamic>> routes = [];
-  String myUserId = "emergency-vehicle-1";
+  String? myUserId;
   late IO.Socket _socket;
   LatLng _currentPosition = const LatLng(0, 0);
   Set<Polyline> polylines = <Polyline>{};
+  bool is_tracking = false;
+  bool is_active = false;
   @override
   void initState() {
     super.initState();
@@ -84,32 +86,8 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       widget.origin['lat'],
       widget.origin['lng'],
     );
-    // requestRoutesToServer(origin, destination);
+    requestRoutesToServer(origin, destination);
     // createUser();
-  }
-
-  void createUser() async {
-    // await Roam.createUser(
-    //   description: "emergency_vehicle",
-    //   callBack: ({user}) {
-    //     setState(() {
-    //       final userData = jsonDecode(user!);
-    //       myUserId = userData["userId"];
-    //     });
-    //   },
-    // );
-
-    // await _createMovingGeofence(myUserId ?? 'No User ID');
-    // Push incident report data to Firebase
-    await Roam.getListenerStatus(
-      callBack: ({user}) {
-        setState(() {
-          final userData = jsonDecode(user!);
-          myUserId = userData["userId"];
-        });
-      },
-    );
-    await Roam.startTracking(trackingMode: "active");
   }
 
   Future<void> _createMovingGeofence(String userId) async {
@@ -234,7 +212,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void _connectSocket() {
-    String socketUrl = "https://bd17-120-29-76-216.ngrok-free.app";
+    String socketUrl = "https://6c3c-120-29-76-216.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -305,22 +283,21 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     });
   }
 
-  Future<void> _updateFirebaseLocation(
-      double latitude, double longitude) async {
-    try {
-      // Assuming each vehicle has a unique ID, e.g., "vehicle123"
-      final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-      await dbRef.child('emergency-vehicles/$myUserId').set({
-        'latitude': latitude,
-        'longitude': longitude,
-        'status': 'active',
-      });
+  // Future<void> _updateFirebaseLocation(
+  //     double latitude, double longitude) async {
+  //   try {
+  //     final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+  //     await dbRef.child('emergency-vehicles/$myUserId').set({
+  //       'latitude': latitude,
+  //       'longitude': longitude,
+  //       'status': 'active',
+  //     });
 
-      print("Firebase location updated: $latitude, $longitude");
-    } catch (error) {
-      print("Failed to update Firebase: $error");
-    }
-  }
+  //     print("Firebase location updated: $latitude, $longitude");
+  //   } catch (error) {
+  //     print("Failed to update Firebase: $error");
+  //   }
+  // }
 
   Future<void> _moveCameraToCurrentPosition() async {
     final GoogleMapController controller = await _controller.future;
@@ -400,11 +377,17 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                               BorderRadius.circular(10), // Rounded corners
                         ),
                       ),
-                      onPressed: () => _showConfirmationDialog(
-                          context), // Show confirmation dialog
-                      child: const Text(
-                        'Mark as Resolved',
-                        style: TextStyle(
+                      onPressed: () {
+                        if (is_active) {
+                          _showConfirmationDialog(
+                              context); // Show confirmation dialog
+                        } else {
+                          createTrackingLocation(); // Start tracking location
+                        }
+                      },
+                      child: Text(
+                        is_active ? 'End Trip' : 'Start Trip',
+                        style: const TextStyle(
                           fontSize: 16, // Adjust font size
                           color: Colors.white, // Text color
                         ),
@@ -470,7 +453,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
       });
-
+      createTrackingLocation();
       requestRoutesToServer(
         LatLng(position.latitude, position.longitude),
         LatLng(destination.latitude, destination.longitude),
@@ -491,7 +474,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Confirm Action"),
+          title: const Text("You are about to start the trip."),
           content: const Text("Are you sure you want to take this action?"),
           actions: [
             TextButton(
@@ -506,7 +489,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
               ),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
-                actionTakenSuccessfully(); // Call the action method
+                createTrackingLocation();
               },
               child: const Text("Confirm"),
             ),
@@ -514,6 +497,93 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         );
       },
     );
+  }
+
+  void createTrackingLocation() async {
+    if (myUserId == null) {
+      await Roam.createUser(
+        description: "emergency_vehicle",
+        callBack: ({user}) {
+          setState(() {
+            final userData = jsonDecode(user!);
+            myUserId = userData["userId"];
+          });
+        },
+      );
+      Roam.startTracking(trackingMode: "active");
+      Roam.onLocation((location) {
+        print(jsonEncode(location));
+      });
+    } else {
+      await Roam.getListenerStatus(callBack: ({user}) {
+        setState(() {
+          final userData = jsonDecode(user!);
+          myUserId = userData["userId"];
+        });
+      });
+    }
+    setState(() {
+      is_active = true;
+      is_tracking = true;
+    });
+
+    print("Tracking location created successfully. $myUserId");
+
+    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
+    try {
+      final Map<String, dynamic> payload = {
+        "userId": myUserId,
+        "origin": {
+          "lat": _currentPosition.latitude,
+          "lng": _currentPosition.longitude
+        },
+        "is_tracking": is_tracking,
+      };
+      final response = await http.post(
+        Uri.parse('$backendUrl/emergency-vehicle-location'),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: json.encode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        print("Location sent successfully. $payload");
+        print("Response: ${response.body}");
+      } else {
+        print("Failed to send destination: ${response.body}");
+      }
+    } catch (e) {
+      print("Error sending destination: $e");
+    }
+
+    // showDialog(
+    //   context: context,
+    //   builder: (BuildContext context) {
+    //     return AlertDialog(
+    //       title: const Text("User is "),
+    //       content: const Text("Are you sure you want to take this action?"),
+    //       actions: [
+    //         TextButton(
+    //           onPressed: () {
+    //             Navigator.of(context).pop(); // Close the dialog
+    //           },
+    //           child: const Text("Cancel"),
+    //         ),
+    //         ElevatedButton(
+    //           style: ElevatedButton.styleFrom(
+    //             backgroundColor: Colors.red.shade400, // Confirm button color
+    //           ),
+    //           onPressed: () {
+    //             Navigator.of(context).pop(); // Close the dialog
+    //             actionTakenSuccessfully(); // Call the action method
+    //           },
+    //           child: const Text("Confirm"),
+    //         ),
+    //       ],
+    //     );
+    //   },
+    // );
   }
 
   void actionTakenSuccessfully() async {
