@@ -4,9 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:geolocator/geolocator.dart';
 
 class EmergencyMap extends StatefulWidget {
-  final String emergencyVehicleId = "emergency-vehicle-1";
-
-  const EmergencyMap({super.key});
+  const EmergencyMap({Key? key}) : super(key: key);
 
   @override
   _EmergencyMapState createState() => _EmergencyMapState();
@@ -15,15 +13,16 @@ class EmergencyMap extends StatefulWidget {
 class _EmergencyMapState extends State<EmergencyMap> {
   late GoogleMapController _mapController;
   LatLng? _currentLocation;
-  LatLng? _emergencyVehicleLocation;
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   final Set<Marker> _markers = {};
+  BitmapDescriptor emergencyIcon = BitmapDescriptor.defaultMarker;
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _listenToEmergencyVehicleLocation();
+    _listenToAllEmergencyVehicleLocations();
+    setCustomMarkerIcon();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -43,8 +42,7 @@ class _EmergencyMapState extends State<EmergencyMap> {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print(
-          "Location permissions are permanently denied. Cannot request permissions.");
+      print("Location permissions are permanently denied.");
       return;
     }
 
@@ -58,7 +56,6 @@ class _EmergencyMapState extends State<EmergencyMap> {
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
         _updateCurrentLocationMarker();
-        _moveCameraToIncludeLocations();
       });
     });
   }
@@ -73,69 +70,79 @@ class _EmergencyMapState extends State<EmergencyMap> {
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
         infoWindow: const InfoWindow(title: "Your Location"),
       ));
+      _moveCameraToIncludeLocations();
     }
   }
 
-  void _listenToEmergencyVehicleLocation() {
+  void _listenToAllEmergencyVehicleLocations() {
     _dbRef
-        .child('emergency-vehicle-location/${widget.emergencyVehicleId}/origin')
+        .child('emergency-vehicle-location')
         .onValue
         .listen((DatabaseEvent event) {
       if (event.snapshot.exists) {
-        final data = event.snapshot.value as Map;
-        final latitude = data['latitude'];
-        final longitude = data['longitude'];
+        final vehicles = event.snapshot.value as Map;
 
-        if (latitude != null && longitude != null) {
-          setState(() {
-            _emergencyVehicleLocation = LatLng(latitude, longitude);
-            _updateEmergencyVehicleMarker();
-            _moveCameraToIncludeLocations();
+        setState(() {
+          _markers.removeWhere(
+              (marker) => marker.markerId.value.startsWith("emergencyVehicle"));
+
+          vehicles.forEach((userId, vehicleData) {
+            final isTracking = vehicleData['is_tracking'] == true ||
+                vehicleData['is_tracking'] == "true";
+
+            if (isTracking) {
+              final origin = vehicleData['origin'];
+              if (origin != null &&
+                  origin['lat'] != null &&
+                  origin['lng'] != null) {
+                final vehicleLocation = LatLng(origin['lat'], origin['lng']);
+
+                _markers.add(Marker(
+                  markerId: MarkerId("emergencyVehicle_$userId"),
+                  position: vehicleLocation,
+                  icon: emergencyIcon,
+                  infoWindow: InfoWindow(title: " $userId"),
+                ));
+              }
+            }
           });
-        }
+        });
+        _moveCameraToIncludeLocations();
       } else {
-        print(
-            "No emergency vehicle location found for ID: ${widget.emergencyVehicleId}");
+        print("No emergency vehicle locations found in the database.");
       }
     });
   }
 
-  void _updateEmergencyVehicleMarker() {
-    if (_emergencyVehicleLocation != null) {
-      _markers
-          .removeWhere((marker) => marker.markerId.value == "emergencyVehicle");
-      _markers.add(Marker(
-        markerId: const MarkerId("emergencyVehicle"),
-        position: _emergencyVehicleLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: const InfoWindow(title: "Emergency Vehicle"),
-      ));
-    }
+  void setCustomMarkerIcon() {
+    BitmapDescriptor.asset(const ImageConfiguration(size: Size(48, 48)),
+            'assets/images/icons/emergency_icon.png')
+        .then((icon) {
+      emergencyIcon = icon;
+    });
   }
 
   void _moveCameraToIncludeLocations() {
-    if (_currentLocation != null && _emergencyVehicleLocation != null) {
+    if (_markers.isNotEmpty) {
+      final allLatLngs = _markers.map((marker) => marker.position).toList();
+
+      final latitudes = allLatLngs.map((latLng) => latLng.latitude);
+      final longitudes = allLatLngs.map((latLng) => latLng.longitude);
+
+      final southwest = LatLng(
+        latitudes.reduce((a, b) => a < b ? a : b),
+        longitudes.reduce((a, b) => a < b ? a : b),
+      );
+
+      final northeast = LatLng(
+        latitudes.reduce((a, b) => a > b ? a : b),
+        longitudes.reduce((a, b) => a > b ? a : b),
+      );
+
       _mapController.animateCamera(
         CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              _currentLocation!.latitude < _emergencyVehicleLocation!.latitude
-                  ? _currentLocation!.latitude
-                  : _emergencyVehicleLocation!.latitude,
-              _currentLocation!.longitude < _emergencyVehicleLocation!.longitude
-                  ? _currentLocation!.longitude
-                  : _emergencyVehicleLocation!.longitude,
-            ),
-            northeast: LatLng(
-              _currentLocation!.latitude > _emergencyVehicleLocation!.latitude
-                  ? _currentLocation!.latitude
-                  : _emergencyVehicleLocation!.latitude,
-              _currentLocation!.longitude > _emergencyVehicleLocation!.longitude
-                  ? _currentLocation!.longitude
-                  : _emergencyVehicleLocation!.longitude,
-            ),
-          ),
-          50.0, // Padding for the bounds
+          LatLngBounds(southwest: southwest, northeast: northeast),
+          50.0, // Padding
         ),
       );
     }
@@ -149,8 +156,7 @@ class _EmergencyMapState extends State<EmergencyMap> {
       ),
       body: GoogleMap(
         initialCameraPosition: const CameraPosition(
-          target: LatLng(14.5965778,
-              120.9383598), // Default position until location is available
+          target: LatLng(14.5965778, 120.9383598), // Default position
           zoom: 10,
         ),
         myLocationEnabled: true,
