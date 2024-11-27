@@ -180,16 +180,11 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
   }
 
   bool _validateInputs() {
-    return _nameController.text.isNotEmpty &&
-        _emailController.text.isNotEmpty &&
-        _detailsController.text.isNotEmpty &&
-        _imageUrl != null;
+    return _emailController.text.isNotEmpty && _imageUrl != null;
   }
 
   void _resetForm() {
     setState(() {
-      _detailsController.clear();
-      _nameController.clear();
       _imageUrl = null;
       _image = null;
     });
@@ -253,37 +248,6 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Name Field
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: const Color.fromARGB(255, 224, 59, 59)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Your Name',
-                      labelStyle:
-                          TextStyle(color: Color.fromARGB(255, 224, 59, 59)),
-                      suffix: Text('*', style: TextStyle(color: Colors.red)),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-
                 // Email Field
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
@@ -340,7 +304,6 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                       labelText: 'Incident Details',
                       labelStyle:
                           TextStyle(color: Color.fromARGB(255, 224, 59, 59)),
-                      suffix: Text('*', style: TextStyle(color: Colors.red)),
                       border: InputBorder.none,
                     ),
                   ),
