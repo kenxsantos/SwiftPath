@@ -120,6 +120,11 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
     final DatabaseReference dbRef =
         FirebaseDatabase.instance.ref("incident-reports");
 
+    dbRef.onChildAdded.listen((DatabaseEvent event) {
+      // _showSnackbar("An incident report was added!");
+      _fetchUserReports(120.985560, 14.598317);
+    });
+
     dbRef.onChildChanged.listen((DatabaseEvent event) {
       _showSnackbar("An incident report was updated!");
       _fetchUserReports(120.985560, 14.598317);

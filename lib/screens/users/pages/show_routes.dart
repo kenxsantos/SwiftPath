@@ -35,14 +35,13 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   final LocationTracker _locationTracker = LocationTracker();
   LatLng? _currentLocation;
 
-  final String googleMapKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   final Completer<GoogleMapController> _controller = Completer();
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
   );
   bool showAutoCompleteSearchBar = true;
-
+  String socketUrl = dotenv.env['SOCKET_URL'] ?? 'Socket URL not found';
   var radiusValue = 3000.0;
   bool getDirections = false;
   var uuid = const Uuid();
@@ -66,7 +65,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   LatLng _currentPosition = const LatLng(0, 0);
   Set<Polyline> polylines = <Polyline>{};
   bool is_tracking = false;
-  bool is_active = false;
+  bool is_active = true;
   @override
   void initState() {
     super.initState();
@@ -87,7 +86,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       widget.origin['lng'],
     );
     requestRoutesToServer(origin, destination);
-    // createUser();
   }
 
   Future<void> _createMovingGeofence(String userId) async {
@@ -177,7 +175,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void requestRoutesToServer(LatLng origin, LatLng destination) async {
-    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "destination": {
@@ -187,7 +184,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         "origin": {"lat": origin.latitude, "lng": origin.longitude}
       };
       final response = await http.post(
-        Uri.parse('$backendUrl/current-location'),
+        Uri.parse('$socketUrl/current-location'),
         headers: {
           "Content-Type": "application/json",
         },
@@ -206,13 +203,11 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void dispose() {
-    // Cancel the position stream to avoid memory leaks
     positionStream.cancel();
     super.dispose();
   }
 
   void _connectSocket() {
-    String socketUrl = "https://083b-136-158-25-128.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -282,22 +277,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       });
     });
   }
-
-  // Future<void> _updateFirebaseLocation(
-  //     double latitude, double longitude) async {
-  //   try {
-  //     final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-  //     await dbRef.child('emergency-vehicles/$myUserId').set({
-  //       'latitude': latitude,
-  //       'longitude': longitude,
-  //       'status': 'active',
-  //     });
-
-  //     print("Firebase location updated: $latitude, $longitude");
-  //   } catch (error) {
-  //     print("Failed to update Firebase: $error");
-  //   }
-  // }
 
   Future<void> _moveCameraToCurrentPosition() async {
     final GoogleMapController controller = await _controller.future;
@@ -370,8 +349,9 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                     width: MediaQuery.of(context).size.width * 0.9,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.red.shade400, // Background color
+                        backgroundColor: is_active
+                            ? Colors.red.shade400
+                            : Colors.white, // Background color
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(10), // Rounded corners
@@ -379,17 +359,18 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
                       ),
                       onPressed: () {
                         if (is_active) {
-                          _showConfirmationDialog(
-                              context); // Show confirmation dialog
+                          _showConfirmationDialog(context);
                         } else {
-                          createTrackingLocation(); // Start tracking location
+                          actionTakenSuccessfully();
                         }
                       },
                       child: Text(
-                        is_active ? 'End Trip' : 'Start Trip',
-                        style: const TextStyle(
+                        is_active ? 'Start Trip' : 'End Trip',
+                        style: TextStyle(
                           fontSize: 16, // Adjust font size
-                          color: Colors.white, // Text color
+                          color: is_active
+                              ? Colors.white
+                              : Colors.red.shade400, // Text color
                         ),
                       ),
                     ),
@@ -479,7 +460,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
+                setState(() {
+                  is_active = true;
+                });
               },
               child: const Text("Cancel"),
             ),
@@ -514,6 +498,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       Roam.onLocation((location) {
         print(jsonEncode(location));
       });
+      setState(() {
+        is_active = false;
+        is_tracking = true;
+      });
     } else {
       await Roam.getListenerStatus(callBack: ({user}) {
         setState(() {
@@ -521,14 +509,13 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           myUserId = userData["userId"];
         });
       });
+      setState(() {
+        is_active = false;
+        is_tracking = true;
+      });
     }
-    setState(() {
-      is_active = true;
-      is_tracking = true;
-    });
 
     print("Tracking location created successfully. $myUserId");
-    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "userId": myUserId,
@@ -539,7 +526,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         "is_tracking": is_tracking,
       };
       final response = await http.post(
-        Uri.parse('$backendUrl/emergency-vehicle-location'),
+        Uri.parse('$socketUrl/emergency-vehicle-location'),
         headers: {
           "Content-Type": "application/json",
         },
@@ -555,40 +542,12 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     } catch (e) {
       print("Error sending destination: $e");
     }
-
-    // showDialog(
-    //   context: context,
-    //   builder: (BuildContext context) {
-    //     return AlertDialog(
-    //       title: const Text("User is "),
-    //       content: const Text("Are you sure you want to take this action?"),
-    //       actions: [
-    //         TextButton(
-    //           onPressed: () {
-    //             Navigator.of(context).pop(); // Close the dialog
-    //           },
-    //           child: const Text("Cancel"),
-    //         ),
-    //         ElevatedButton(
-    //           style: ElevatedButton.styleFrom(
-    //             backgroundColor: Colors.red.shade400, // Confirm button color
-    //           ),
-    //           onPressed: () {
-    //             Navigator.of(context).pop(); // Close the dialog
-    //             actionTakenSuccessfully(); // Call the action method
-    //           },
-    //           child: const Text("Confirm"),
-    //         ),
-    //       ],
-    //     );
-    //   },
-    // );
   }
 
   void actionTakenSuccessfully() async {
     final DatabaseReference dbRef =
         FirebaseDatabase.instance.ref("incident-reports");
-
+    await Roam.stopTracking();
     String geofenceId = widget.geofenceId;
     try {
       // Query the database to find reports with the specific geofenceId

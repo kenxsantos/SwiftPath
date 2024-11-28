@@ -84,90 +84,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EditProfilePage(),
-                      ),
-                    );
-                  },
-                  leading: const Icon(Icons.person,
-                      color: Color.fromARGB(255, 224, 59, 59)),
-                  title: const Text(
-                    'Profile',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-                ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ReportHistoryPage(),
-                      ),
-                    );
-                  },
-                  leading: const Icon(Icons.pending_actions_outlined,
-                      color: Color.fromARGB(255, 224, 59, 59)),
-                  title: const Text(
-                    'Report History',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-                ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HistoryLogs(),
-                      ),
-                    );
-                  },
-                  leading: const Icon(Icons.history,
-                      color: Color.fromARGB(255, 224, 59, 59)),
-                  title: const Text(
-                    'Logs',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-                ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LocationSettings(),
-                      ),
-                    );
-                  },
-                  leading: const Icon(Icons.more_horiz_outlined,
-                      color: Color.fromARGB(255, 224, 59, 59)),
-                  title: const Text(
-                    'More',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-                ListTile(
-                  onTap: () => AuthValidation.signOut(
-                    context: context,
-                    auth: _auth,
-                    googleSignIn: _googleSignIn,
-                  ),
-                  leading: const Icon(Icons.logout,
-                      color: Color.fromARGB(255, 224, 59, 59)),
-                  title: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -206,6 +122,15 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                     ),
+                    ListTile(
+                      onTap: () => _showLogoutDialog(context),
+                      leading: const Icon(Icons.logout,
+                          color: Color.fromARGB(255, 224, 59, 59)),
+                      title: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.black87),
+                      ),
+                    ),
                   ]),
                   const SizedBox(height: 20),
                   const Padding(
@@ -221,16 +146,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   _buildSettingsCard([
-                    _buildSettingsTile(
-                      icon: Icons.history,
-                      title: 'Logs',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HistoryLogs(),
-                        ),
-                      ),
-                    ),
+                    // _buildSettingsTile(
+                    //   icon: Icons.history,
+                    //   title: 'Logs',
+                    //   onTap: () => Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => const HistoryLogs(),
+                    //     ),
+                    //   ),
+                    // ),
                     _buildSettingsTile(
                       icon: Icons.more_horiz_outlined,
                       title: 'Location Settings',
@@ -238,17 +163,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const LocationSettings(),
-                        ),
-                      ),
-                    ),
-                    _buildSettingsTile(
-                      icon: Icons.group,
-                      title: 'My Users',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const MyUsersPage(title: "Users"),
                         ),
                       ),
                     ),
@@ -294,6 +208,36 @@ class _SettingsPageState extends State<SettingsPage> {
         Icons.chevron_right,
         color: Colors.grey,
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () {
+                AuthValidation.signOut(
+                  context: context,
+                  auth: _auth,
+                  googleSignIn: _googleSignIn,
+                ); // Perform the logout action
+              },
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

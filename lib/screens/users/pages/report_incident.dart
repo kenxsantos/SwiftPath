@@ -305,7 +305,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                       _buildFormField(
                         controller: _nameController,
                         label: 'Your Name',
-                        isRequired: true,
+                        isRequired: false,
                         readOnly: false,
                       ),
                       const SizedBox(height: 20),
@@ -323,7 +323,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                       _buildFormField(
                         controller: _detailsController,
                         label: 'Incident Details',
-                        isRequired: true,
+                        isRequired: false,
                         maxLines: 4,
                         hint: 'Describe the emergency situation...',
                       ),

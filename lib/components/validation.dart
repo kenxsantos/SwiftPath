@@ -4,10 +4,7 @@ import 'package:bcrypt/bcrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:roam_flutter/roam_flutter.dart';
 import 'package:swiftpath/views/login_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 
@@ -81,14 +78,6 @@ class AuthValidation {
     };
 
     try {
-      Roam.createUser(
-        description: 'Creating user for: $email',
-        callBack: ({user}) {
-          print(user);
-          Roam.offlineTracking(true);
-          Roam.allowMockLocation(allow: true);
-        },
-      );
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
