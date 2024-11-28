@@ -81,74 +81,90 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              Text(_auth.currentUser?.displayName ?? '',
-                  style: const TextStyle(
-                      fontSize: 18,
-                      color: Color.fromARGB(255, 224, 59, 59) // Subtitle color
-                      )),
-            ],
-          )),
-          const SizedBox(height: 20),
-          ListTile(
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const EditProfilePage()));
-            },
-            leading: const Icon(Icons.person,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Profile',
-              style: TextStyle(color: Colors.black87),
             ),
           ),
-          ListTile(
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ReportHistoryPage()));
-            },
-            leading: const Icon(Icons.pending_actions_outlined,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Report History',
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-          ListTile(
-            onTap: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HistoryLogs()));
-            },
-            leading: const Icon(Icons.history,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Logs',
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-          ListTile(
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const LocationSettings()));
-            },
-            leading: const Icon(Icons.more_horiz_outlined,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'More',
-              style: TextStyle(color: Colors.black87),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.black87),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfilePage(),
+                      ),
+                    );
+                  },
+                  leading: const Icon(Icons.person,
+                      color: Color.fromARGB(255, 224, 59, 59)),
+                  title: const Text(
+                    'Profile',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ReportHistoryPage(),
+                      ),
+                    );
+                  },
+                  leading: const Icon(Icons.pending_actions_outlined,
+                      color: Color.fromARGB(255, 224, 59, 59)),
+                  title: const Text(
+                    'Report History',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HistoryLogs(),
+                      ),
+                    );
+                  },
+                  leading: const Icon(Icons.history,
+                      color: Color.fromARGB(255, 224, 59, 59)),
+                  title: const Text(
+                    'Logs',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LocationSettings(),
+                      ),
+                    );
+                  },
+                  leading: const Icon(Icons.more_horiz_outlined,
+                      color: Color.fromARGB(255, 224, 59, 59)),
+                  title: const Text(
+                    'More',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                ListTile(
+                  onTap: () => AuthValidation.signOut(
+                    context: context,
+                    auth: _auth,
+                    googleSignIn: _googleSignIn,
+                  ),
+                  leading: const Icon(Icons.logout,
+                      color: Color.fromARGB(255, 224, 59, 59)),
+                  title: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+              ],
             ),
           ),
           SliverToBoxAdapter(
@@ -174,17 +190,21 @@ class _SettingsPageState extends State<SettingsPage> {
                       icon: Icons.person,
                       title: 'Profile',
                       onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const EditProfilePage())),
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfilePage(),
+                        ),
+                      ),
                     ),
                     _buildSettingsTile(
                       icon: Icons.pending_actions_outlined,
                       title: 'Report History',
                       onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ReportHistoryPage())),
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ReportHistoryPage(),
+                        ),
+                      ),
                     ),
                   ]),
                   const SizedBox(height: 20),
@@ -205,41 +225,32 @@ class _SettingsPageState extends State<SettingsPage> {
                       icon: Icons.history,
                       title: 'Logs',
                       onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const HistoryLogs())),
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HistoryLogs(),
+                        ),
+                      ),
                     ),
                     _buildSettingsTile(
                       icon: Icons.more_horiz_outlined,
                       title: 'Location Settings',
                       onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const LocationSettings(
-                                    userId: '67160b86c45da22b6c686977',
-                                  ))),
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LocationSettings(),
+                        ),
+                      ),
                     ),
                     _buildSettingsTile(
                       icon: Icons.group,
                       title: 'My Users',
                       onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const MyUsersPage(
-                                    title: "Users",
-                                  ))),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
-                  _buildSettingsCard([
-                    _buildSettingsTile(
-                      icon: Icons.logout,
-                      title: 'Logout',
-                      textColor: Colors.red,
-                      onTap: () => AuthValidation.signOut(
-                          context: context,
-                          auth: _auth,
-                          googleSignIn: _googleSignIn),
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const MyUsersPage(title: "Users"),
+                        ),
+                      ),
                     ),
                   ]),
                 ],

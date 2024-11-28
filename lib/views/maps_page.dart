@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:swiftpath/components/location_tracking.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/admin_maps.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
@@ -26,7 +25,6 @@ import 'package:swiftpath/screens/users/pages/tracking.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/services.dart';
 import 'dart:io' show Platform;
@@ -66,7 +64,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Set<Polyline> polylines = <Polyline>{};
   final FocusNode _focusNode = FocusNode();
 
-  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   final TextEditingController _chatController = TextEditingController();
   List<Map<String, dynamic>> _chatMessages = [];
   bool _isChatLoading = false;
@@ -141,12 +138,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           apiKey: apiKey,
         );
       }
-
-      NotificationService().initNotifications();
-      NotificationService().listenToMessages();
-      _setupFirebaseMessaging();
-      _connectSocket();
     });
+
+    NotificationService().initNotifications();
+    NotificationService().listenToMessages();
+    _setupFirebaseMessaging();
+    _connectSocket();
+    _getCurrentPosition();
   }
 
   Future<void> _initTts() async {
@@ -216,10 +214,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://6c3c-120-29-76-216.ngrok-free.app";
-    print("Connecting to Socket.IO server: $socketUrl");
+    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
+    print("Connecting to Socket.IO server: $backendUrl");
     _socket = IO.io(
-      socketUrl,
+      backendUrl,
       IO.OptionBuilder()
           .setPath('/webhook')
           .setTransports(['websocket']) // Use WebSocket transport
@@ -319,7 +317,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Full screen map
           GoogleMap(
             initialCameraPosition: const CameraPosition(
               target: LatLng(14.4964995, 120.9996993),
@@ -334,79 +331,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             markers: _markers,
             polylines: polylines,
           ),
-
-          // Search bar with improved styling
-          Positioned(
-            top: 50.0,
-            left: 20.0,
-            right: 20.0,
-            child: Card(
-              elevation: 8.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: _autovalidateMode,
-                child: GooglePlacesAutoCompleteTextFormField(
-                  countries: ['ph'],
-                  textEditingController: _destinationController,
-                  googleAPIKey: "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg",
-                  decoration: InputDecoration(
-                    fillColor: Colors.white,
-                    filled: true,
-                    hintText: 'Where to?',
-                    prefixIcon: const Icon(Icons.search),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return 'Please enter some text';
-                    }
-                    return null;
-                  },
-                  // proxyURL: _yourProxyURL,
-                  maxLines: 1,
-                  overlayContainer: (child) => Material(
-                    elevation: 1.0,
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    child: child,
-                  ),
-                  getPlaceDetailWithLatLng: (prediction) {
-                    print('placeDetails${prediction.lng}');
-                    final double destinationLat = double.parse(prediction.lat!);
-                    final double destinationLng = double.parse(prediction.lng!);
-                    setState(() {
-                      _markers = {
-                        Marker(
-                          markerId: const MarkerId('destination'),
-                          position: LatLng(destinationLat, destinationLng),
-                          infoWindow:
-                              const InfoWindow(title: "Destination Location"),
-                        ),
-                      };
-                    });
-                    //provide me a code for sending a destination to the server
-                    requestRoutesToServer(destinationLat, destinationLng);
-                    _focusNode.unfocus(); // Remove focus
-                    _destinationController.clear();
-                  },
-                  itmClick: (Prediction prediction) =>
-                      _destinationController.text = prediction.description!,
-                ),
-              ),
-            ),
-          ),
-
-          // Routes button with improved styling
+          autoCompleteSearchBar(),
           if (routes.isNotEmpty)
             Positioned(
               bottom: 130.0,
@@ -450,6 +375,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             onPressed: () {
               Navigator.push(
                 context,
+                MaterialPageRoute(builder: (context) => const EmergencyMap()),
+              );
+            },
+            icon: const Icon(
+              Icons.location_on,
+              color: Colors.white,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
                 MaterialPageRoute(builder: (context) => const AdminMaps()),
               );
             },
@@ -457,21 +394,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               Icons.admin_panel_settings,
               color: Colors.white,
               size: 28,
-              )
-            },
-            ),
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EmergencyMap()),
-                );
-              },
-              icon: const Icon(
-                Icons.location_on,
-                color: Colors.white,
-              ),
-            ),
             ),
           ),
           IconButton(
@@ -591,6 +513,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 // Use Expanded for ListView in a Dialog
@@ -719,9 +642,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Positioned autoCompleteSearchBar() {
     return Positioned(
-        top: 40.0,
-        right: 15.0,
-        left: 15.0,
+      top: 50.0,
+      left: 20.0,
+      right: 20.0,
+      child: Card(
+        elevation: 8.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
         child: Form(
           key: _formKey,
           autovalidateMode: _autovalidateMode,
@@ -729,16 +657,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             countries: ['ph'],
             textEditingController: _destinationController,
             googleAPIKey: "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg",
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               fillColor: Colors.white,
               filled: true,
-              hintText: 'Enter your address',
-              labelText: 'Address',
-              labelStyle: TextStyle(color: Colors.black),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.black),
+              hintText: 'Where to?',
+              prefixIcon: const Icon(Icons.search),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 15,
               ),
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
             ),
             validator: (value) {
               if (value!.isEmpty) {
@@ -767,6 +698,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 };
               });
+              //provide me a code for sending a destination to the server
               requestRoutesToServer(destinationLat, destinationLng);
               _focusNode.unfocus(); // Remove focus
               _destinationController.clear();
@@ -774,12 +706,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             itmClick: (Prediction prediction) =>
                 _destinationController.text = prediction.description!,
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   void requestRoutesToServer(
       double destinationLat, double destinationLng) async {
-    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
+    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "destination": {"lat": destinationLat, "lng": destinationLng},
@@ -842,9 +776,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final prompt = '''
       Context: You are an emergency response assistant. Use this incident report data:
       $reports
-      
       User question: $userMessage
-      
       Please provide a helpful response based on the incident reports data.
       ''';
 
@@ -1163,46 +1095,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   _handleChatInteraction(_chatController.text);
                 }
               },
-      ),
-    );
-  }
-}
-
-class AmbulanceLoadingIndicator extends StatefulWidget {
-  const AmbulanceLoadingIndicator({super.key});
-
-  @override
-  State<AmbulanceLoadingIndicator> createState() =>
-      _AmbulanceLoadingIndicatorState();
-}
-
-class _AmbulanceLoadingIndicatorState extends State<AmbulanceLoadingIndicator>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: Image.asset(
-        'assets/images/ambulance.png',
-        width: 30,
-        height: 30,
       ),
     );
   }

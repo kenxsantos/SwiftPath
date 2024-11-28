@@ -333,16 +333,6 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                       _buildImageUploadArea(),
                     ],
                   ),
-                  child: TextField(
-                    controller: _detailsController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Incident Details',
-                      labelStyle:
-                          TextStyle(color: Color.fromARGB(255, 224, 59, 59)),
-                      border: InputBorder.none,
-                    ),
-                  ),
                 ),
 
                 const SizedBox(height: 32),
