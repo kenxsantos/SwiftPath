@@ -177,7 +177,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void requestRoutesToServer(LatLng origin, LatLng destination) async {
-    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
+    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "destination": {
@@ -212,7 +212,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   }
 
   void _connectSocket() {
-    String socketUrl = "https://6c3c-120-29-76-216.ngrok-free.app";
+    String socketUrl = "https://083b-136-158-25-128.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -528,8 +528,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     });
 
     print("Tracking location created successfully. $myUserId");
-
-    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
+    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "userId": myUserId,
