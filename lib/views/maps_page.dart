@@ -21,7 +21,7 @@ import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/admin_maps.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
-import 'package:swiftpath/screens/users/pages/tracking.dart';
+import 'package:swiftpath/screens/users/pages/emergency_tracking.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -41,13 +41,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   late GoogleMapController _mapController;
   Timer? _debounce;
   TextEditingController _originController = TextEditingController();
-  final String googleApiKey = dotenv.env['GOOGLE_API_KEY'] ?? '';
+
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
   Completer<GoogleMapController> _controller = Completer();
   List<Map<String, dynamic>> routes = [];
   List<dynamic> _placesList = [];
   Set<Marker> _markers = <Marker>{};
-
+  String googleApiKey =
+      dotenv.env['GOOGLE_MAPS_API_KEY'] ?? 'API key not found';
+  String sockerUrl = dotenv.env['SOCKET_URL'] ?? 'Socket URL not found';
   late IO.Socket _socket;
   LatLng? _currentPosition;
   LatLng? _emergencyVehicleLocation;
@@ -138,13 +140,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           apiKey: apiKey,
         );
       }
+
+      NotificationService().initNotifications();
+      NotificationService().listenToMessages();
     });
 
-    NotificationService().initNotifications();
-    NotificationService().listenToMessages();
     _setupFirebaseMessaging();
     _connectSocket();
     _getCurrentPosition();
+
+    debugPrint('Google API Key: $googleApiKey');
+    debugPrint('Socket URL: $sockerUrl');
   }
 
   Future<void> _initTts() async {
@@ -214,10 +220,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Connect to Socket
   void _connectSocket() {
-    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
-    print("Connecting to Socket.IO server: $backendUrl");
+    print("Connecting to Socket.IO server: $sockerUrl");
     _socket = IO.io(
-      backendUrl,
+      sockerUrl,
       IO.OptionBuilder()
           .setPath('/webhook')
           .setTransports(['websocket']) // Use WebSocket transport
@@ -713,7 +718,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void requestRoutesToServer(
       double destinationLat, double destinationLng) async {
-    String backendUrl = "https://083b-136-158-25-128.ngrok-free.app";
     try {
       final Map<String, dynamic> payload = {
         "destination": {"lat": destinationLat, "lng": destinationLng},
@@ -723,7 +727,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         },
       };
       final response = await http.post(
-        Uri.parse('$backendUrl/current-location'),
+        Uri.parse('$sockerUrl/current-location'),
         headers: {
           "Content-Type": "application/json",
         },

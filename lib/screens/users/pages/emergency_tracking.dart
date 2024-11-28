@@ -96,6 +96,8 @@ class _EmergencyMapState extends State<EmergencyMap> {
                   origin['lat'] != null &&
                   origin['lng'] != null) {
                 final vehicleLocation = LatLng(origin['lat'], origin['lng']);
+                print(
+                    "Vehicle updated: $userId, Location: ${origin['lat']}, ${origin['lng']}");
 
                 _markers.add(Marker(
                   markerId: MarkerId("emergencyVehicle_$userId"),
