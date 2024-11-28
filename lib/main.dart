@@ -11,7 +11,10 @@ import 'package:logger/logger.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
+import 'package:swiftpath/screens/users/pages/emergency_tracking.dart';
 import 'package:swiftpath/views/landing_page.dart';
+import 'package:swiftpath/views/maps_page.dart';
 import 'firebase_options.dart';
 
 // Roam SDK import
@@ -23,8 +26,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await dotenv.load(fileName: ".env");
-
+    await dotenv.load();
     // Safe way to print env variables
     print("\nLoaded environment variables:");
     if (dotenv.env['GEMINI_API_KEY'] != null) {
@@ -88,7 +90,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const LandingPage(), // Replace with the initial page of your app
+      home: const BarangayMaps(), // Replace with the initial page of your app
     );
   }
 }
