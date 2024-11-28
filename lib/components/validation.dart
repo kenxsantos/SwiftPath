@@ -8,6 +8,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:roam_flutter/roam_flutter.dart';
+import 'package:swiftpath/views/login_page.dart';
 import 'package:swiftpath/views/splash_screen.dart';
 
 class AuthValidation {
@@ -177,19 +178,6 @@ class AuthValidation {
         return;
       }
 
-      Roam.createUser(
-          description: 'Creating user for: $userData',
-          callBack: ({user}) {
-            if (user != null) {
-              // If user is successfully created
-              print(user);
-
-              // Start offline tracking and allow mock location
-              Roam.offlineTracking(true);
-              Roam.allowMockLocation(allow: true);
-            }
-          });
-
       // Navigate to the splash screen after successful sign-in
       Navigator.push(context,
           MaterialPageRoute(builder: (context) => const SplashScreen()));
@@ -227,7 +215,8 @@ class AuthValidation {
       }
 
       await auth.signOut();
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => const LoginPage()));
     } catch (e) {
       print('Sign out failed: $e');
       showDialog(

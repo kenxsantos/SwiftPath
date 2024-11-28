@@ -23,9 +23,15 @@ class _IncidentReportsScreenState extends State<IncidentReportsScreen> {
       final snapshot = await dbRef.child('incident-reports').get();
       if (snapshot.exists) {
         List<Map<String, dynamic>> reports = [];
-        snapshot.children.forEach((reportSnapshot) {
-          final report = Map<String, dynamic>.from(reportSnapshot.value as Map);
-          reports.add(report);
+
+        // Iterate through geofence IDs
+        snapshot.children.forEach((geofenceSnapshot) {
+          geofenceSnapshot.children.forEach((reportSnapshot) {
+            // Parse each incident report
+            final report =
+                Map<String, dynamic>.from(reportSnapshot.value as Map);
+            reports.add(report);
+          });
         });
 
         // Sort reports by timestamp in descending order (latest first)

@@ -2,9 +2,12 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 // import 'dart:developer' as developer;
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_html/flutter_html.dart' as flutter_html;
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -12,13 +15,14 @@ import 'package:fab_circular_menu_plus/fab_circular_menu_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:swiftpath/components/location_tracking.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/admin_maps.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
+import 'package:swiftpath/screens/users/pages/tracking.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -35,6 +39,8 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+  late GoogleMapController _mapController;
   Timer? _debounce;
   TextEditingController _originController = TextEditingController();
   final String googleApiKey = dotenv.env['GOOGLE_API_KEY'] ?? '';
@@ -43,9 +49,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<Map<String, dynamic>> routes = [];
   List<dynamic> _placesList = [];
   Set<Marker> _markers = <Marker>{};
-  // Replace with your backend URL
+
   late IO.Socket _socket;
-  LatLng _currentPosition = const LatLng(0, 0); // Default position
+  LatLng? _currentPosition;
+  LatLng? _emergencyVehicleLocation;
   bool showAlternativeRoutes = false;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -199,11 +206,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     } catch (e) {
       print("Error in _speakText: $e");
     }
+    dotenv.load(fileName: ".env");
+    NotificationService().initNotifications();
+    NotificationService().listenToMessages();
+    _setupFirebaseMessaging();
+    _getCurrentPosition();
+    _connectSocket();
   }
 
   // Connect to Socket
   void _connectSocket() {
-    String socketUrl = "https://f9fd-136-158-25-188.ngrok-free.app";
+    String socketUrl = "https://6c3c-120-29-76-216.ngrok-free.app";
     print("Connecting to Socket.IO server: $socketUrl");
     _socket = IO.io(
       socketUrl,
@@ -247,6 +260,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             };
           }).toList();
         });
+
+        if (routes.isNotEmpty) {
+          String routesPolyline = routes[0]['overview_polyline'];
+          List<LatLng> poly = decodePolyline(routesPolyline);
+          setState(() {
+            polylines.clear();
+            polylines.add(Polyline(
+              polylineId: const PolylineId('initial_route_polyline'),
+              points: poly,
+              color: Colors.blue, // Customize polyline color
+              width: 5, // Customize polyline width
+            ));
+          });
+          print("First overview_polyline: ${routes[0]['overview_polyline']}");
+        } else {
+          print("No routes found.");
+        }
       } else {
         print("Invalid data format received: $data");
       }
@@ -279,7 +309,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: _currentPosition, zoom: 15),
+        CameraPosition(target: _currentPosition!, zoom: 15),
       ),
     );
   }
@@ -427,6 +457,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               Icons.admin_panel_settings,
               color: Colors.white,
               size: 28,
+              )
+            },
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EmergencyMap()),
+                );
+              },
+              icon: const Icon(
+                Icons.location_on,
+                color: Colors.white,
+              ),
+            ),
             ),
           ),
           IconButton(
@@ -482,6 +527,49 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  Future<void> _getCurrentPosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Show error to user
+      return Future.error(
+          'Location services are disabled. Please enable them.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied.');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied. Please enable them in settings.');
+    }
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+        distanceFilter: 10,
+      ),
+    ).listen((Position position) {
+      setState(() {
+        _currentPosition = LatLng(position.latitude, position.longitude);
+      });
+
+      _controller.future.then((GoogleMapController controller) {
+        controller.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentPosition!, 15),
+        );
+      }).catchError((error) {
+        print('Error updating map camera: $error');
+      });
+    });
+  }
+
   void showRoutesPopup() {
     showDialog(
       context: context,
@@ -503,6 +591,74 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
+                ),
+                const SizedBox(height: 20),
+                // Use Expanded for ListView in a Dialog
+                Expanded(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: routes.length,
+                    itemBuilder: (context, index) {
+                      final route = routes[index];
+                      return Card(
+                        margin: const EdgeInsets.all(5.0),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0)),
+                        elevation: 6.0,
+                        child: ExpansionTile(
+                          title: Text(
+                            route['summary'] ?? 'No summary available',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Distance: ${route['distance'] ?? 'N/A'}, Duration: ${route['duration'] ?? 'N/A'}',
+                          ),
+                          children: [
+                            ListTile(
+                              onTap: () => setAlterativeRoutesPolyline(
+                                  routes[index]['overview_polyline']),
+                              title: const Text(
+                                'Follow Route',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            ListTile(
+                              title: Text(
+                                'Start: ${route['start_address']}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            ListTile(
+                              title: Text(
+                                'Destination: ${route['end_address']}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            const Divider(),
+                            ...route['steps'].map<Widget>((step) {
+                              return Column(
+                                children: [
+                                  ListTile(
+                                    title: flutter_html.Html(
+                                      data: step['instruction'] ??
+                                          'No instruction',
+                                    ),
+                                    subtitle: Text(
+                                      '  Distance: ${step['distance']}, Duration: ${step['duration']}',
+                                    ),
+                                  ),
+                                  const Divider(),
+                                ],
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const Divider(height: 30),
@@ -516,19 +672,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void setAlterativeRoutesPolyline(String overviewPolyline) {
-    // Decode the polyline into LatLng points
+    print(overviewPolyline);
     final decodedPolyline = decodePolyline(overviewPolyline);
-
-    // Add the polyline to your map (assuming you're using a controller)
     setState(() {
+      polylines.clear();
       polylines.add(Polyline(
-        polylineId: PolylineId('route_polyline'),
+        polylineId: const PolylineId('alternative_route_polyline'),
         points: decodedPolyline,
-        color: Colors.blue, // Customize polyline color
-        width: 5, // Customize polyline width
+        color: Colors.blue,
+        width: 5,
       ));
     });
-
     Navigator.of(context).pop();
   }
 
@@ -563,21 +717,79 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return polyline;
   }
 
+  Positioned autoCompleteSearchBar() {
+    return Positioned(
+        top: 40.0,
+        right: 15.0,
+        left: 15.0,
+        child: Form(
+          key: _formKey,
+          autovalidateMode: _autovalidateMode,
+          child: GooglePlacesAutoCompleteTextFormField(
+            countries: ['ph'],
+            textEditingController: _destinationController,
+            googleAPIKey: "AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg",
+            decoration: const InputDecoration(
+              fillColor: Colors.white,
+              filled: true,
+              hintText: 'Enter your address',
+              labelText: 'Address',
+              labelStyle: TextStyle(color: Colors.black),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.black),
+              ),
+              border: OutlineInputBorder(),
+            ),
+            validator: (value) {
+              if (value!.isEmpty) {
+                return 'Please enter some text';
+              }
+              return null;
+            },
+            // proxyURL: _yourProxyURL,
+            maxLines: 1,
+            overlayContainer: (child) => Material(
+              elevation: 1.0,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              child: child,
+            ),
+            getPlaceDetailWithLatLng: (prediction) {
+              print('placeDetails${prediction.lng}');
+              final double destinationLat = double.parse(prediction.lat!);
+              final double destinationLng = double.parse(prediction.lng!);
+              setState(() {
+                _markers = {
+                  Marker(
+                    markerId: const MarkerId('destination'),
+                    position: LatLng(destinationLat, destinationLng),
+                    infoWindow: const InfoWindow(title: "Destination Location"),
+                  ),
+                };
+              });
+              requestRoutesToServer(destinationLat, destinationLng);
+              _focusNode.unfocus(); // Remove focus
+              _destinationController.clear();
+            },
+            itmClick: (Prediction prediction) =>
+                _destinationController.text = prediction.description!,
+          ),
+        ));
+  }
+
   void requestRoutesToServer(
       double destinationLat, double destinationLng) async {
-    final String? apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-
-    const String backendUrl =
-        "https://f9fd-136-158-25-188.ngrok-free.app/destination";
+    final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
     try {
-      // Payload for the backend
       final Map<String, dynamic> payload = {
-        "destination": {"lat": destinationLat, "lng": destinationLng}
+        "destination": {"lat": destinationLat, "lng": destinationLng},
+        "origin": {
+          "lat": _currentPosition?.latitude,
+          "lng": _currentPosition?.longitude
+        },
       };
-
-      // Send POST request to the backend
       final response = await http.post(
-        Uri.parse(backendUrl),
+        Uri.parse('$backendUrl/current-location'),
         headers: {
           "Content-Type": "application/json",
         },
@@ -585,7 +797,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
 
       if (response.statusCode == 200) {
-        print("Destination sent successfully.");
+        print("Location sent successfully. $payload");
         print("Response: ${response.body}");
       } else {
         print("Failed to send destination: ${response.body}");

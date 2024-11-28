@@ -163,17 +163,28 @@ class _AdminMapsState extends ConsumerState<AdminMaps> {
       final DataSnapshot snapshot = await dbRef.child('incident-reports').get();
 
       if (snapshot.exists) {
-        Map<String, dynamic> reports =
+        // Iterate through geofence IDs
+        Map<String, dynamic> geofenceGroups =
             Map<String, dynamic>.from(snapshot.value as Map);
 
-        reports.forEach((key, value) {
-          final reportData = Map<String, dynamic>.from(value);
-          final latitude = reportData['latitude'];
-          final longitude = reportData['longitude'];
+        geofenceGroups.forEach((geofenceId, reports) {
+          // Iterate through reports under each geofence ID
+          Map<String, dynamic> incidentReports =
+              Map<String, dynamic>.from(reports as Map);
 
-          if (latitude != null && longitude != null) {
-            setMarker(LatLng(latitude, longitude), info: "Incident Report");
-          }
+          incidentReports.forEach((reportKey, reportValue) {
+            final reportData = Map<String, dynamic>.from(reportValue);
+            final latitude = reportData['latitude'];
+            final longitude = reportData['longitude'];
+            final reporterName = reportData['reporter_name'];
+
+            if (latitude != null && longitude != null) {
+              setMarker(
+                LatLng(latitude, longitude),
+                info: "Reported by $reporterName",
+              );
+            }
+          });
         });
 
         setState(() {

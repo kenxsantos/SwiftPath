@@ -120,124 +120,73 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
     }
   }
 
-  Future<void> _reportIncident() async {
-    if (_isRequestInProgress) {
-      return;
-    }
+  Future<void> _submitReport() async {
+    final Position position = await _getCurrentLocation();
+    String address =
+        await _getAddressFromLatLng(position.latitude, position.longitude);
 
+    if (_isLoading) return;
     setState(() {
-      _isLoading = true; // Start loading when the process begins
-      _isRequestInProgress = true; // Indicate a request is in progress
+      _isLoading = true;
     });
 
-    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-    Position position;
-
     try {
-      position = await _getCurrentLocation();
-    } catch (e) {
-      logger.e('Error getting location: $e');
-      _handleError();
-      return;
-    }
+      if (!_validateInputs()) {
+        _showDialog('Errors', 'Please fill in all fields.');
+        return;
+      }
+      final payload = {
+        "latitude": position.latitude,
+        "longitude": position.longitude,
+        "address": address,
+        "details": _detailsController.text,
+        "status": 'Pending',
+        "reporter_email": _emailController.text,
+        "reporter_name": _nameController.text,
+        "timestamp": DateTime.now().toIso8601String(),
+        "image_url": _imageUrl ?? "No Image",
+      };
 
-    String address;
-    try {
-      address =
-          await _getAddressFromLatLng(position.latitude, position.longitude);
-    } catch (e) {
-      logger.e('Error getting address: $e');
-      _handleError();
-      return;
-    }
-    if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _detailsController.text.isEmpty ||
-        _imageUrl == null) {
-      _showDialog('Required Fields', 'Please fill all required fields.');
-      _handleError();
-      return;
-    }
-
-    final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    try {
-      final bool isGeofenceCreated = await _createGeofence(
-        position,
-        roamAiApiKey,
-        dbRef,
-        address,
+      // Send to backend
+      final String backendUrl = dotenv.env['SOCKET_URL'] ?? '';
+      final response = await http.post(
+        Uri.parse('$backendUrl/report-incident'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode(payload),
       );
+      print("Response: ${response.body}");
 
-      if (isGeofenceCreated) {
-        logger.i('Geofence created and stored in Firebase successfully!');
-        _showDialog('Success', 'Incident reported successfully!');
-        _detailsController.clear();
-        _imageUrl = null;
-        _image = null;
+      if (response.statusCode == 200) {
+        print("Report submitted successfully: ${response.body}");
+        _onReportSuccess();
+      } else {
+        print(
+            "Failed to submit report: ${response.body} ${response.statusCode}");
+        _showDialog('Error', 'Failed to submit the report. Please try again.');
       }
     } catch (e) {
-      logger.e('Error creating geofence: $e');
-      _showDialog('Error', 'An error occurred while creating the geofence.');
+      print("Error submitting report: $e");
+      _showDialog('Error', 'An error occurred. Please try again.');
     } finally {
-      _handleError();
-    }
-  }
-
-  Future<bool> _createGeofence(Position position, String apiKey,
-      DatabaseReference dbRef, String address) async {
-    final DateTime now = DateTime.now();
-    final DateTime endTime = now.add(Duration(days: 1));
-    final String startTimeIso =
-        DateFormat("yyyy-MM-ddTHH:mm:ss").format(now.toUtc());
-    final String endTimeIso =
-        DateFormat("yyyy-MM-ddTHH:mm:ss").format(endTime.toUtc());
-    final Map<String, dynamic> geofenceData = {
-      "coordinates": [position.longitude, position.latitude],
-      "geometry_radius": 500,
-      "description": "Incident Location",
-      "tag": "Incident Report",
-      "metadata": {},
-      "is_enabled": [true, startTimeIso, endTimeIso]
-    };
-
-    final response = await http.post(
-      Uri.parse('https://api.roam.ai/v1/api/geofence/'),
-      headers: {
-        'Api-Key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(geofenceData),
-    );
-
-    if (response.statusCode == 201) {
-      final Map<String, dynamic> responseData =
-          jsonDecode(response.body)['data'];
-
-      // Push incident report data to Firebase
-      await dbRef.child('incident-reports/').push().set({
-        'geofence_id': responseData["geofence_id"],
-        'image_url': _imageUrl,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'address': address,
-        'details': _detailsController.text,
-        'reporter_name': _nameController.text,
-        'reporter_email': _emailController.text,
-        'status': 'Pending',
-        'timestamp': DateTime.now().toIso8601String(),
+      setState(() {
+        _isLoading = false;
       });
-
-      return true;
-    } else {
-      logger.e('Failed to create geofence: ${response.body}');
-      return false;
     }
   }
 
-  void _handleError() {
+  void _onReportSuccess() {
+    _showDialog('Success', 'Incident reported successfully!');
+    _resetForm();
+  }
+
+  bool _validateInputs() {
+    return _emailController.text.isNotEmpty && _imageUrl != null;
+  }
+
+  void _resetForm() {
     setState(() {
-      _isLoading = false;
-      _isRequestInProgress = false;
+      _imageUrl = null;
+      _image = null;
     });
   }
 
@@ -326,8 +275,16 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                     ],
                   ),
                 ),
-
-                // Form Fields Container
+                const Text(
+                  "Incident Details",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 225, 59, 59),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Email Field
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -376,6 +333,16 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                       _buildImageUploadArea(),
                     ],
                   ),
+                  child: TextField(
+                    controller: _detailsController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Incident Details',
+                      labelStyle:
+                          TextStyle(color: Color.fromARGB(255, 224, 59, 59)),
+                      border: InputBorder.none,
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: 32),
@@ -385,7 +352,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _reportIncident,
+                    onPressed: _isLoading ? null : _submitReport,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF3B30),
                       shape: RoundedRectangleBorder(
