@@ -24,24 +24,61 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: const Color.fromARGB(
-            255, 255, 255, 255), // Background color for AppBar
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 50),
-          Center(
-              child: Column(
-            children: [
-              const Text(
-                'SWIFTPATH',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                  color: Color.fromARGB(255, 224, 59, 59), // Title color
+      backgroundColor: Colors.grey[100],
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 200.0,
+            floating: false,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      Colors.red.shade400,
+                      Colors.red.shade800,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        _auth.currentUser?.displayName
+                                ?.substring(0, 1)
+                                .toUpperCase() ??
+                            'U',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _auth.currentUser?.displayName ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      _auth.currentUser?.email ?? '',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(_auth.currentUser?.displayName ?? '',
@@ -113,53 +150,139 @@ class _SettingsPageState extends State<SettingsPage> {
               'Logout',
               style: TextStyle(color: Colors.black87),
             ),
-            onTap: () => AuthValidation.signOut(
-                context: context, auth: _auth, googleSignIn: _googleSignIn),
           ),
-          ListTile(
-            leading: const Icon(Icons.logout,
-                color: Color.fromARGB(255, 224, 59, 59)),
-            title: const Text(
-              'My Users',
-              style: TextStyle(color: Colors.black87),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding:
+                        EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Text(
+                      'Account Settings',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  _buildSettingsCard([
+                    _buildSettingsTile(
+                      icon: Icons.person,
+                      title: 'Profile',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const EditProfilePage())),
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.pending_actions_outlined,
+                      title: 'Report History',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ReportHistoryPage())),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+                  const Padding(
+                    padding:
+                        EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Text(
+                      'App Settings',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  _buildSettingsCard([
+                    _buildSettingsTile(
+                      icon: Icons.history,
+                      title: 'Logs',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HistoryLogs())),
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.more_horiz_outlined,
+                      title: 'Location Settings',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const LocationSettings(
+                                    userId: '67160b86c45da22b6c686977',
+                                  ))),
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.group,
+                      title: 'My Users',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const MyUsersPage(
+                                    title: "Users",
+                                  ))),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+                  _buildSettingsCard([
+                    _buildSettingsTile(
+                      icon: Icons.logout,
+                      title: 'Logout',
+                      textColor: Colors.red,
+                      onTap: () => AuthValidation.signOut(
+                          context: context,
+                          auth: _auth,
+                          googleSignIn: _googleSignIn),
+                    ),
+                  ]),
+                ],
+              ),
             ),
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const MyUsersPage(
-                          title: "Users",
-                        ))),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _createTrip() async {
-    final Map<String, dynamic> geofenceData = {
-      "user_id": "67160b86c45da22b6c686977",
-      "is_started": true,
-      "origins": [
-        [120.9980341, 14.4960702]
-      ],
-      "destinations": [
-        [120.993528, 14.483879]
-      ]
-    };
-
-    final response = await http.post(
-      Uri.parse('https://api.roam.ai/v1/api/trips/'),
-      headers: {
-        'Api-key': "10f984325931446ea8e54d6a76c44037",
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(geofenceData),
+  Widget _buildSettingsCard(List<Widget> tiles) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: tiles,
+      ),
     );
+  }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print("Trip created successfully: ${response.body}");
-    } else {
-      print("Failed to create trip: ${response.statusCode}, ${response.body}");
-    }
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? textColor,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: textColor ?? Colors.red.shade400),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textColor ?? Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.grey,
+      ),
+    );
   }
 }

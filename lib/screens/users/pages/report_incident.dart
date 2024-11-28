@@ -230,15 +230,51 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Incident')),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Report Incident',
+          style: TextStyle(
+            color: Color(0xFF1A1F36),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Color(0xFF1A1F36)),
+      ),
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title for the Form
+                // Title and Description
+                Container(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Report an Emergency",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1F36),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Please provide accurate information to help emergency responders.",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const Text(
                   "Incident Details",
                   style: TextStyle(
@@ -250,51 +286,51 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                 const SizedBox(height: 16),
                 // Email Field
                 Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: const Color.fromARGB(255, 224, 59, 59)),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  child: TextField(
-                    controller: _emailController,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      labelStyle:
-                          TextStyle(color: Color.fromARGB(255, 224, 59, 59)),
-                      suffix: Text('*', style: TextStyle(color: Colors.red)),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-
-                // Details Field
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: const Color.fromARGB(255, 224, 59, 59)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.2),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name Field
+                      _buildFormField(
+                        controller: _nameController,
+                        label: 'Your Name',
+                        isRequired: true,
+                        readOnly: false,
                       ),
+                      const SizedBox(height: 20),
+
+                      // Email Field
+                      _buildFormField(
+                        controller: _emailController,
+                        label: 'Email Address',
+                        isRequired: true,
+                        readOnly: true,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Details Field
+                      _buildFormField(
+                        controller: _detailsController,
+                        label: 'Incident Details',
+                        isRequired: true,
+                        maxLines: 4,
+                        hint: 'Describe the emergency situation...',
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Image Upload Area
+                      _buildImageUploadArea(),
                     ],
                   ),
                   child: TextField(
@@ -309,96 +345,161 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
                   ),
                 ),
 
-                // Image Upload Area
-                GestureDetector(
-                  onTap: _uploadImage,
-                  child: Container(
-                    width: double.infinity,
-                    height: 200,
-                    margin: const EdgeInsets.only(top: 16, bottom: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      border: Border.all(
-                          color: const Color.fromARGB(
-                        255,
-                        224,
-                        59,
-                        59,
-                      )),
-                      borderRadius: BorderRadius.circular(8.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: _image == null
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_a_photo,
-                                    color: Color.fromARGB(255, 224, 59, 59),
-                                    size: 40),
-                                SizedBox(height: 8),
-                                Text('Upload Image',
-                                    style: TextStyle(
-                                        color:
-                                            Color.fromRGBO(255, 59, 59, 59))),
-                              ],
-                            ),
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Image.file(
-                              _image!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                          ),
-                  ),
-                ),
+                const SizedBox(height: 32),
 
-                // Report Button
+                // Submit Button
                 SizedBox(
                   width: double.infinity,
+                  height: 56,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submitReport,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color.fromARGB(
-                          255, 224, 59, 59), // Button background color
-                      foregroundColor: const Color.fromARGB(
-                          255, 255, 255, 255), // Text color
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      backgroundColor: const Color(0xFFFF3B30),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 0,
                     ),
-                    child: const Text('Report Incident'),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Submit Report',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Loader Overlay
+          // Loading Overlay
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.5),
               child: const Center(
                 child: CircularProgressIndicator(
                   color: Colors.white,
-                  semanticsLabel: 'Reporting Incident, Please wait...',
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFormField({
+    required TextEditingController controller,
+    required String label,
+    bool isRequired = false,
+    bool readOnly = false,
+    int maxLines = 1,
+    String? hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label${isRequired ? ' *' : ''}',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1F36),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          readOnly: readOnly,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[400]),
+            filled: true,
+            fillColor: readOnly ? Colors.grey[100] : Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFFF3B30)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageUploadArea() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Upload Image *',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1F36),
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _uploadImage,
+          child: Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: _image == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_a_photo_outlined,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Click to upload image',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      _image!,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }

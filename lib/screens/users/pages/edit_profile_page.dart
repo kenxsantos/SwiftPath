@@ -59,10 +59,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Update email if it's different from current email
         if (_emailController.text.isNotEmpty &&
             _emailController.text != user.email) {
-          // Update Firebase Authentication email
           await user.verifyBeforeUpdateEmail(_emailController.text);
-          // Optionally, verify the new email with Firebase's verifyBeforeUpdateEmail()
-          // await user.verifyBeforeUpdateEmail(_emailController.text);
         }
 
         // Update password if it's not empty
@@ -70,18 +67,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
           await user.updatePassword(_passwordController.text);
         }
 
-        // Update the Realtime Database (excluding password)
+        // Update the Realtime Database
         DatabaseReference userRef = _dbRef.child('users/${user.uid}');
         await userRef.update({
           'fullname': _fullNameController.text,
-          'email': _emailController.text, // Also update email in the database
+          'email': _emailController.text,
         });
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
         );
       } catch (e) {
-        print('Error updating profile: $e');
+        debugPrint('Error updating profile: $e');
+
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
         );
@@ -180,38 +180,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     if (pickedFile != null) {
       try {
-        // Show loading indicator
         setState(() {
           _isLoading = true;
         });
 
-        // Upload image to Firebase Storage
         String fileName = '${_auth.currentUser!.uid}_profile_picture.jpg';
         Reference storageRef =
             FirebaseStorage.instance.ref().child('profile_pictures/$fileName');
 
-        // Upload the file
         await storageRef.putFile(File(pickedFile.path));
-
-        // Get the download URL
         String downloadUrl = await storageRef.getDownloadURL();
 
-        // Update profile picture URL in Realtime Database
         await _dbRef.child('users/${_auth.currentUser!.uid}').update({
           'profilePictureUrl': downloadUrl,
         });
 
-        // Update local state
+        if (!mounted) return;
         setState(() {
           _profilePictureUrl = downloadUrl;
           _isLoading = false;
         });
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile picture updated successfully')),
         );
       } catch (e) {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
@@ -228,30 +222,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context); // Cancel button action
-          },
+          onPressed: () => Navigator.pop(context),
           icon: const Icon(
             Icons.arrow_back_ios_outlined,
-            color: Color.fromARGB(255, 224, 59, 59),
-            size: 24,
+            color: Color(0xFFE11D48), // Modern red color
+            size: 22,
           ),
         ),
-        title: const Center(
-          child: Text('Edit Profile'),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F2937),
+          ),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9.0),
-            child: TextButton(
-              onPressed: _onSavePressed, // Save button action
-              child: const Text(
-                'Save',
-                style: TextStyle(
-                  color: Color.fromARGB(255, 224, 59, 59),
-                  fontSize: 15,
-                ),
+          TextButton(
+            onPressed: _onSavePressed,
+            child: const Text(
+              'Save',
+              style: TextStyle(
+                color: Color(0xFFE11D48), // Modern red color
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -259,37 +256,69 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       body: Stack(
         children: [
-          Center(
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.red.shade50, // Light red background
+                  Colors.white,
+                ],
+              ),
+            ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Profile Picture Section
                   Center(
                     child: Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 55,
-                          backgroundImage: _profilePictureUrl != null
-                              ? NetworkImage(_profilePictureUrl!)
-                              : const AssetImage('assets/images/imgdefault.png')
-                                  as ImageProvider,
-                          backgroundColor: Colors.grey.shade300,
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                spreadRadius: 2,
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 65,
+                            backgroundImage: _profilePictureUrl != null
+                                ? NetworkImage(_profilePictureUrl!)
+                                : const AssetImage(
+                                        'assets/images/imgdefault.png')
+                                    as ImageProvider,
+                            backgroundColor: Colors.white,
+                          ),
                         ),
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
                             onTap: _uploadProfilePicture,
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.grey.shade800,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color:
+                                    const Color(0xFFE11D48), // Modern red color
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    spreadRadius: 2,
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
                               child: const Icon(
                                 Icons.camera_alt,
                                 color: Colors.white,
-                                size: 18,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -297,56 +326,89 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  // Form Fields for user information
-                  const SizedBox(height: 10),
-                  TextField(
+                  const SizedBox(height: 40),
+                  _buildTextField(
                     controller: _fullNameController,
-                    decoration: InputDecoration(
-                      labelText: 'Full Name',
-                      labelStyle: const TextStyle(fontSize: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    label: 'Full Name',
+                    icon: Icons.person_outline,
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
+                  const SizedBox(height: 20),
+                  _buildTextField(
                     controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      labelStyle: const TextStyle(fontSize: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    label: 'Email',
+                    icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _passwordController,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: const TextStyle(fontSize: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    obscureText: true,
-                  ),
                   const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                  ),
                 ],
               ),
             ),
           ),
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withOpacity(0.3),
               child: const Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  color: Color(0xFFE11D48), // Modern red color
+                ),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    TextInputType? keyboardType,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 2,
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 15,
+          ),
+          prefixIcon: Icon(
+            icon,
+            color: const Color(0xFFE11D48), // Modern red color
+            size: 22,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
       ),
     );
   }
