@@ -17,11 +17,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:swiftpath/components/routes.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/super_admin/pages/admin_maps.dart';
 import 'package:swiftpath/screens/users/pages/report_incident.dart';
 import 'package:swiftpath/screens/users/pages/settings_page.dart';
 import 'package:swiftpath/screens/users/pages/emergency_tracking.dart';
+import 'package:swiftpath/services/google_directions_service.dart';
 import 'package:swiftpath/services/notification_service.dart';
 import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -41,7 +43,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   late GoogleMapController _mapController;
   Timer? _debounce;
   TextEditingController _originController = TextEditingController();
-
+  final GoogleDirectionsService directionsService =
+      GoogleDirectionsService('AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg');
   final GlobalKey<FabCircularMenuPlusState> fabKey = GlobalKey();
   Completer<GoogleMapController> _controller = Completer();
   List<Map<String, dynamic>> routes = [];
@@ -146,7 +149,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
 
     _setupFirebaseMessaging();
-    _connectSocket();
     _getCurrentPosition();
 
     debugPrint('Google API Key: $googleApiKey');
@@ -215,81 +217,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     NotificationService().listenToMessages();
     _setupFirebaseMessaging();
     _getCurrentPosition();
-    _connectSocket();
-  }
-
-  // Connect to Socket
-  void _connectSocket() {
-    print("Connecting to Socket.IO server: $sockerUrl");
-    _socket = IO.io(
-      sockerUrl,
-      IO.OptionBuilder()
-          .setPath('/webhook')
-          .setTransports(['websocket']) // Use WebSocket transport
-          .disableAutoConnect() // Disable auto-connect for manual connection
-          .build(),
-    );
-    _socket.connect();
-    _socket.on('location_update', (data) {
-      print('Location Update: $data');
-      if (data is Map<String, dynamic>) {
-        final coordinates = data['coordinates']['coordinates'];
-        setState(() {
-          _currentPosition = LatLng(coordinates[1], coordinates[0]);
-        });
-      }
-      // Move the map camera to the new position
-      _moveCameraToCurrentPosition();
-    });
-
-    _socket.on("alternative_routes", (data) {
-      print("Received data: $data");
-
-      if (data is Map<String, dynamic> && data['routes'] is List) {
-        final List<dynamic> receivedRoutes = data['routes'];
-
-        print("Received data: $receivedRoutes");
-        // Parse routes and store in the `routes` list
-        setState(() {
-          routes = receivedRoutes.map((route) {
-            return {
-              'summary': route['summary'],
-              'distance': route['distance'],
-              'duration': route['duration'],
-              'start_address': route['start_address'],
-              'end_address': route['end_address'],
-              'overview_polyline': route['overview_polyline'],
-              'steps': route['steps'] ?? [],
-            };
-          }).toList();
-        });
-
-        if (routes.isNotEmpty) {
-          String routesPolyline = routes[0]['overview_polyline'];
-          List<LatLng> poly = decodePolyline(routesPolyline);
-          setState(() {
-            polylines.clear();
-            polylines.add(Polyline(
-              polylineId: const PolylineId('initial_route_polyline'),
-              points: poly,
-              color: Colors.blue, // Customize polyline color
-              width: 5, // Customize polyline width
-            ));
-          });
-          print("First overview_polyline: ${routes[0]['overview_polyline']}");
-        } else {
-          print("No routes found.");
-        }
-      } else {
-        print("Invalid data format received: $data");
-      }
-    });
-
-    _socket.onConnect((_) {
-      setState(() {
-        _isLoading = false;
-      });
-    });
   }
 
   @override
@@ -498,151 +425,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void showRoutesPopup() {
+    if (routes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No routes available to display')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.8,
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  "Available Routes",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Use Expanded for ListView in a Dialog
-                Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: routes.length,
-                    itemBuilder: (context, index) {
-                      final route = routes[index];
-                      return Card(
-                        margin: const EdgeInsets.all(5.0),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10.0)),
-                        elevation: 6.0,
-                        child: ExpansionTile(
-                          title: Text(
-                            route['summary'] ?? 'No summary available',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Distance: ${route['distance'] ?? 'N/A'}, Duration: ${route['duration'] ?? 'N/A'}',
-                          ),
-                          children: [
-                            ListTile(
-                              onTap: () => setAlterativeRoutesPolyline(
-                                  routes[index]['overview_polyline']),
-                              title: const Text(
-                                'Follow Route',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.blue,
-                                    decoration: TextDecoration.underline,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            ListTile(
-                              title: Text(
-                                'Start: ${route['start_address']}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            ListTile(
-                              title: Text(
-                                'Destination: ${route['end_address']}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            const Divider(),
-                            ...route['steps'].map<Widget>((step) {
-                              return Column(
-                                children: [
-                                  ListTile(
-                                    title: flutter_html.Html(
-                                      data: step['instruction'] ??
-                                          'No instruction',
-                                    ),
-                                    subtitle: Text(
-                                      '  Distance: ${step['distance']}, Duration: ${step['duration']}',
-                                    ),
-                                  ),
-                                  const Divider(),
-                                ],
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const Divider(height: 30),
-                // ... rest of routes dialog content
-              ],
-            ),
-          ),
+        return RoutesPopup(
+          routes: routes, // Pass the fetched routes
+          onRouteSelected: (polyline) {
+            // Update the map with the selected route's polyline
+            setState(() {
+              polylines.clear(); // Clear existing polylines
+              final polylinePoints = directionsService.decodePolyline(polyline);
+              polylines.add(Polyline(
+                polylineId: const PolylineId('selected_route_polyline'),
+                points: polylinePoints,
+                color: Colors.green,
+                width: 5,
+              ));
+            });
+          },
         );
       },
     );
-  }
-
-  void setAlterativeRoutesPolyline(String overviewPolyline) {
-    print(overviewPolyline);
-    final decodedPolyline = decodePolyline(overviewPolyline);
-    setState(() {
-      polylines.clear();
-      polylines.add(Polyline(
-        polylineId: const PolylineId('alternative_route_polyline'),
-        points: decodedPolyline,
-        color: Colors.blue,
-        width: 5,
-      ));
-    });
-    Navigator.of(context).pop();
-  }
-
-  List<LatLng> decodePolyline(String encoded) {
-    List<LatLng> polyline = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int shift = 0, result = 0;
-      int b;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      int dlng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lng += dlng;
-
-      polyline.add(LatLng(lat / 1e5, lng / 1e5));
-    }
-    return polyline;
   }
 
   Positioned autoCompleteSearchBar() {
@@ -704,7 +514,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 };
               });
               //provide me a code for sending a destination to the server
-              requestRoutesToServer(destinationLat, destinationLng);
+              _fetchAndDisplayRoutes(destinationLat, destinationLng);
               _focusNode.unfocus(); // Remove focus
               _destinationController.clear();
             },
@@ -716,32 +526,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void requestRoutesToServer(
+  Future<void> _fetchAndDisplayRoutes(
       double destinationLat, double destinationLng) async {
     try {
-      final Map<String, dynamic> payload = {
-        "destination": {"lat": destinationLat, "lng": destinationLng},
-        "origin": {
-          "lat": _currentPosition?.latitude,
-          "lng": _currentPosition?.longitude
-        },
-      };
-      final response = await http.post(
-        Uri.parse('$sockerUrl/current-location'),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: json.encode(payload),
+      // Fetch routes from the directions service
+      final fetchedRoutes = await directionsService.fetchRoutes(
+        origin: _currentPosition!,
+        destination: LatLng(destinationLat, destinationLng),
       );
 
-      if (response.statusCode == 200) {
-        print("Location sent successfully. $payload");
-        print("Response: ${response.body}");
-      } else {
-        print("Failed to send destination: ${response.body}");
+      if (fetchedRoutes.isNotEmpty) {
+        setState(() {
+          routes = fetchedRoutes.map<Map<String, dynamic>>((route) {
+            return {
+              'summary': route['summary'],
+              'distance': route['distance'],
+              'duration': route['duration'],
+              'start_address': route['start_address'],
+              'end_address': route['end_address'],
+              'overview_polyline': route['overview_polyline'],
+              'steps': route['steps'] ?? [],
+            };
+          }).toList();
+
+          // Add the first route's polyline to the map as default
+          final polylinePoints = directionsService.decodePolyline(
+            fetchedRoutes[0]['overview_polyline'],
+          );
+          polylines.add(Polyline(
+            polylineId: PolylineId('default_route_polyline'),
+            points: polylinePoints,
+            color: Colors.blue,
+            width: 5,
+          ));
+        });
       }
     } catch (e) {
-      print("Error sending destination: $e");
+      print('Error fetching routes: $e');
     }
   }
 

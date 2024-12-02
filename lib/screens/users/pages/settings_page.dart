@@ -20,6 +20,18 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  String _getInitials(String? displayName) {
+    return (displayName?.isNotEmpty ?? false)
+        ? displayName!.substring(0, 1).toUpperCase()
+        : 'U';
+  }
+
+// Reusable text style for CircleAvatar.
+  final TextStyle _circleAvatarTextStyle = const TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.bold,
+    color: Colors.redAccent,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +63,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       radius: 40,
                       backgroundColor: Colors.white,
                       child: Text(
-                        _auth.currentUser?.displayName
-                                ?.substring(0, 1)
-                                .toUpperCase() ??
-                            'U',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red.shade800,
-                        ),
+                        _getInitials(_auth.currentUser?.displayName),
+                        style: _circleAvatarTextStyle,
                       ),
                     ),
                     const SizedBox(height: 10),

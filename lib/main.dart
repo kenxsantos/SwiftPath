@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const BarangayMaps(), // Replace with the initial page of your app
+      home: const LandingPage(), // Replace with the initial page of your app
     );
   }
 }

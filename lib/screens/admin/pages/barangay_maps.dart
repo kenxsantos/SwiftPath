@@ -27,6 +27,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
 //initial marker count value
   int markerIdCounter = 1;
   bool _loading = true;
+  int activeIncident = 0;
 
   var logger = Logger(
     printer: PrettyPrinter(
@@ -109,6 +110,44 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
               },
               backgroundColor: Colors.red,
               child: const Icon(Icons.report, color: Colors.white),
+            ),
+          ),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2), // Shadow position
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(2.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center, // Center content
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      activeIncident.toString(),
+                      textAlign: TextAlign.center, // Center the text
+                      style: const TextStyle(
+                        fontSize: 16, // Adjust font size for circular card
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black, // Adjust text color
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -205,6 +244,7 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
         setState(() {
           _reports = coordinatesList;
           _loading = false;
+          activeIncident = _reports.length;
         });
 
         _showSnackbar("${_reports.length} incident reports found.");

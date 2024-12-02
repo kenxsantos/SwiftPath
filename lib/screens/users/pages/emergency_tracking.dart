@@ -83,9 +83,11 @@ class _EmergencyMapState extends State<EmergencyMap> {
         final vehicles = event.snapshot.value as Map;
 
         setState(() {
+          // Clear previous markers
           _markers.removeWhere(
               (marker) => marker.markerId.value.startsWith("emergencyVehicle"));
 
+          // Add new markers based on the updated data
           vehicles.forEach((userId, vehicleData) {
             final isTracking = vehicleData['is_tracking'] == true ||
                 vehicleData['is_tracking'] == "true";
@@ -95,7 +97,15 @@ class _EmergencyMapState extends State<EmergencyMap> {
               if (origin != null &&
                   origin['lat'] != null &&
                   origin['lng'] != null) {
-                final vehicleLocation = LatLng(origin['lat'], origin['lng']);
+                final vehicleLocation = LatLng(
+                  origin['lat'] is int
+                      ? origin['lat'].toDouble()
+                      : origin['lat'],
+                  origin['lng'] is int
+                      ? origin['lng'].toDouble()
+                      : origin['lng'],
+                );
+
                 print(
                     "Vehicle updated: $userId, Location: ${origin['lat']}, ${origin['lng']}");
 
@@ -109,7 +119,9 @@ class _EmergencyMapState extends State<EmergencyMap> {
             }
           });
         });
-        _moveCameraToIncludeLocations();
+
+        // Optionally, you can force the camera to move to include all markers
+        // _moveCameraToIncludeLocations();
       } else {
         print("No emergency vehicle locations found in the database.");
       }
@@ -158,7 +170,7 @@ class _EmergencyMapState extends State<EmergencyMap> {
       ),
       body: GoogleMap(
         initialCameraPosition: const CameraPosition(
-          target: LatLng(14.5965778, 120.9383598), // Default position
+          target: LatLng(14.59519, 120.90894), // Default position
           zoom: 10,
         ),
         myLocationEnabled: true,
