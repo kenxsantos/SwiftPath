@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:roam_flutter/roam_flutter.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -15,6 +16,7 @@ import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_html/flutter_html.dart' as flutter_html;
 import 'package:http/http.dart' as http;
+import 'package:toastification/toastification.dart';
 
 class ShowRoutes extends ConsumerStatefulWidget {
   final Map<String, dynamic> destination;
@@ -85,10 +87,10 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       widget.origin['lng'],
     );
     _fetchAndDisplayRoutes();
+    _refreshUserTracking();
   }
 
   Future<void> _createMovingGeofence(String userId) async {
-    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
     final String roamAiApiKey =
         dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
 
@@ -107,7 +109,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
 
     // Send a request to the Roam AI API
     try {
-      final response = await http.post(
+      await http.post(
         Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
         headers: {
           'Api-Key': roamAiApiKey,
@@ -115,35 +117,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         },
         body: jsonEncode(geofenceData),
       );
-
-      if (response.statusCode == 201) {
-        final Map<String, dynamic> responseData =
-            jsonDecode(response.body)['data'];
-
-        // Store geofence data in Firebase
-        final Map<String, dynamic> firebaseGeofenceData = {
-          'latitude': _currentPosition.latitude,
-          'longitude': _currentPosition.longitude,
-          "geofence_id": responseData["id"],
-          "account_id": responseData["account_id"],
-          "project_id": responseData["project_id"],
-          "geometry_type": responseData["geometry_type"],
-          "geometry_radius": responseData["geometry_radius"],
-          "is_enabled": responseData["is_enabled"],
-          "is_deleted": responseData["is_deleted"],
-          "only_once": responseData["only_once"],
-          "users": responseData["users"],
-          "created_at": responseData["created_at"],
-          "updated_at": responseData["updated_at"],
-        };
-
-        await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
-        logger.i('Moving geofence created and data stored successfully.');
-        ('Success', 'Geofence created successfully.');
-      } else {
-        logger.e('Error creating moving geofence: ${response.body}');
-        _showDialog('Error', 'Failed to create geofence.');
-      }
     } catch (e) {
       logger.e('Error creating moving geofence: $e');
       _showDialog('Error', 'An error occurred while creating the geofence.');
@@ -175,7 +148,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
 
   Future<void> _fetchAndDisplayRoutes() async {
     try {
-      // Fetch routes from the directions service
       final fetchedRoutes = await directionsService.fetchRoutes(
         origin: origin,
         destination: destination,
@@ -201,7 +173,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
             fetchedRoutes[0]['overview_polyline'],
           );
           polylines.add(Polyline(
-            polylineId: PolylineId('default_route_polyline'),
+            polylineId: const PolylineId('default_route_polyline'),
             points: polylinePoints,
             color: Colors.blue,
             width: 5,
@@ -216,15 +188,6 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   void dispose() {
     positionStream.cancel();
     super.dispose();
-  }
-
-  Future<void> _moveCameraToCurrentPosition() async {
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: _currentPosition, zoom: 15),
-      ),
-    );
   }
 
   @override
@@ -403,6 +366,22 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
               createTrackingLocation();
               setState(() {
                 is_active = false;
+                toastification.show(
+                  type: ToastificationType.success,
+                  style: ToastificationStyle.fillColored,
+                  context: context,
+                  description: RichText(
+                      text: TextSpan(
+                    text: 'Trip started successfully',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  )),
+                  icon: const Icon(Icons.check),
+                  autoCloseDuration: const Duration(seconds: 3),
+                );
               });
             },
             child: const Text("Confirm"),
@@ -419,6 +398,7 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
       } else {
         await _refreshUserTracking();
       }
+      await _createMovingGeofence(myUserId!);
 
       final payload = {
         "userId": myUserId,
@@ -429,23 +409,31 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         "is_tracking": is_tracking,
       };
 
-      final response = await http.post(
-        Uri.parse('$socketUrl/emergency-vehicle-location'),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode(payload),
-      );
+      // Reference to Firebase Realtime Database
+      final databaseReference =
+          FirebaseDatabase.instance.ref("emergency-vehicle-location");
 
-      if (response.statusCode == 200) {
-        print("Location sent successfully: $payload");
+      // Check if user exists in the database
+      final userRef = databaseReference.child(myUserId!);
+      final snapshot = await userRef.get();
+
+      if (snapshot.exists) {
+        // User exists, update their location
+        await userRef.update({
+          'origin': payload['origin'],
+          'is_tracking': payload['is_tracking'],
+        });
+        print("Location updated successfully for userId: $myUserId");
       } else {
-        print("Failed to send location: ${response.body}");
+        // User does not exist, create a new entry
+        await userRef.set(payload);
+        print("New location added successfully for userId: $myUserId");
       }
     } catch (e) {
       print("Error creating tracking location: $e");
     }
   }
 
-// Helper methods
   Future<void> _initializeUserTracking() async {
     await Roam.createUser(
         description: "emergency_vehicle",
@@ -515,12 +503,41 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
           context,
           MaterialPageRoute(builder: (context) => const BarangayMaps()),
         );
-
-        _showSnackBar(context, 'Action taken successfully!');
+        toastification.show(
+          type: ToastificationType.error,
+          style: ToastificationStyle.fillColored,
+          context: context,
+          description: RichText(
+              text: TextSpan(
+            text: 'Trip ended successfully',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          )),
+          icon: const Icon(Icons.error),
+          autoCloseDuration: const Duration(seconds: 3),
+        );
         try {
           await Roam.stopTracking();
         } catch (error) {
-          _showSnackBar(context, 'Failed to stop tracking: $error');
+          toastification.show(
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            context: context,
+            description: RichText(
+                text: TextSpan(
+              text: 'Failed to stop tracking',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            )),
+            icon: const Icon(Icons.error),
+            autoCloseDuration: const Duration(seconds: 3),
+          );
         }
       } else {
         print('No matching reports found.');

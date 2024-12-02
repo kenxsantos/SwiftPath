@@ -13,8 +13,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
 import 'package:swiftpath/screens/users/pages/emergency_tracking.dart';
+import 'package:swiftpath/screens/users/pages/location_settings.dart';
+import 'package:swiftpath/screens/users/pages/settings_page.dart';
 import 'package:swiftpath/views/landing_page.dart';
 import 'package:swiftpath/views/maps_page.dart';
+import 'package:swiftpath/views/signup_page.dart';
 import 'firebase_options.dart';
 
 // Roam SDK import

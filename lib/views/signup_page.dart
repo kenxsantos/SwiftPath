@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:swiftpath/components/components.dart';
@@ -16,12 +17,15 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _auth = FirebaseAuth.instance;
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPassController = TextEditingController();
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   bool _saving = false;
 
   void _resetForm() {
+    _nameController.clear();
     _emailController.clear();
     _passwordController.clear();
     _confirmPassController.clear();
@@ -30,40 +34,51 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sign Up'),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
       backgroundColor: Colors.white,
       body: LoadingOverlay(
         isLoading: _saving,
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const TopScreenImage(screenImageName: 'ambulance.png'),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const TopScreenImage(screenImageName: 'ambulance.png'),
+                  Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const ScreenTitle(title: 'Login'),
+                        CustomTextField(
+                          hintText: 'Name',
+                          obscureText: false,
+                          controller: _nameController,
+                        ),
+                        const SizedBox(height: 20),
                         CustomTextField(
                           hintText: 'Email',
                           obscureText: false,
                           controller: _emailController,
                         ),
+                        const SizedBox(height: 20),
                         CustomTextField(
                           hintText: 'Password',
                           obscureText: true,
                           controller: _passwordController,
                         ),
+                        const SizedBox(height: 20),
                         CustomTextField(
                           hintText: 'Confirm Password',
                           obscureText: true,
                           controller: _confirmPassController,
                         ),
+                        const SizedBox(height: 20),
                         CustomBottomScreen(
                           textButton: 'Sign Up',
                           heroTag: 'signup_btn',
@@ -73,7 +88,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             setState(() {
                               _saving = true;
                             });
-
+                            final name = _nameController.text.trim();
                             final email = _emailController.text.trim();
                             final password = _passwordController.text.trim();
                             final confirmPassword =
@@ -81,6 +96,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
                             if (!AuthValidation.validateFields(
                               context: context,
+                              name: name,
                               email: email,
                               password: password,
                               confirmPassword: confirmPassword,
@@ -90,9 +106,9 @@ class _SignUpPageState extends State<SignUpPage> {
                               });
                               return;
                             }
-
                             await AuthValidation.handleFirebaseSignUp(
                               context: context,
+                              name: name,
                               auth: _auth,
                               email: email,
                               password: password,
@@ -101,32 +117,62 @@ class _SignUpPageState extends State<SignUpPage> {
                                   _saving = false;
                                   _resetForm();
                                   Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SplashScreen()));
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SplashScreen(),
+                                    ),
+                                  );
                                 });
                               },
                               onFailure: () {
                                 setState(() {
-                                  _saving =
-                                      false; // Reset loading state on failure
+                                  _saving = false;
                                 });
                               },
                             );
                           },
                           questionPressed: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => const LoginPage()));
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginPage(),
+                              ),
+                            );
                           },
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Sign up using',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: () => AuthValidation.signInWithGoogle(
+                                context: context,
+                                auth: _auth,
+                                googleSignIn: _googleSignIn,
+                              ),
+                              icon: CircleAvatar(
+                                radius: 25,
+                                backgroundColor: Colors.transparent,
+                                child: Image.asset(
+                                  'assets/images/icons/google.png',
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

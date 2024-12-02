@@ -1,13 +1,12 @@
 import 'dart:convert';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:http/http.dart' as http;
 import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
-import 'package:swiftpath/screens/users/pages/history_logs.dart';
 import 'package:swiftpath/screens/users/pages/location_settings.dart';
-import 'package:swiftpath/screens/users/pages/my_users_page.dart';
 import 'package:swiftpath/screens/users/pages/report_history_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -20,18 +19,71 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  String _getInitials(String? displayName) {
-    return (displayName?.isNotEmpty ?? false)
-        ? displayName!.substring(0, 1).toUpperCase()
-        : 'U';
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+
+  String _userName = '';
+  String _userEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+    _setupUserDataListener();
   }
 
-// Reusable text style for CircleAvatar.
+  void _fetchUserData() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final snapshot = await _dbRef.child('users').child(user.uid).get();
+      if (snapshot.exists) {
+        setState(() {
+          _userName = snapshot.child('name').value as String? ?? '';
+          _userEmail = snapshot.child('email').value as String? ?? user.email!;
+        });
+      } else {
+        setState(() {
+          _userName = user.displayName ?? 'Unknown User';
+          _userEmail = user.email ?? 'Unknown Email';
+        });
+      }
+    }
+  }
+
+  void _setupUserDataListener() {
+    final user = _auth.currentUser;
+    if (user != null) {
+      _dbRef.child('users').child(user.uid).onValue.listen((event) {
+        final snapshot = event.snapshot;
+        if (snapshot.exists) {
+          setState(() {
+            _userName = snapshot.child('name').value as String? ?? '';
+            _userEmail =
+                snapshot.child('email').value as String? ?? user.email!;
+          });
+        }
+      });
+    }
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    return name.split(' ').map((word) => word[0]).take(2).join().toUpperCase();
+  }
+
   final TextStyle _circleAvatarTextStyle = const TextStyle(
     fontSize: 32,
     fontWeight: FontWeight.bold,
     color: Colors.redAccent,
   );
+
+  @override
+  void dispose() {
+    super.dispose();
+    final user = _auth.currentUser;
+    if (user != null) {
+      _dbRef.child('users').child(user.uid).onValue.drain();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,21 +115,19 @@ class _SettingsPageState extends State<SettingsPage> {
                       radius: 40,
                       backgroundColor: Colors.white,
                       child: Text(
-                        _getInitials(_auth.currentUser?.displayName),
+                        _getInitials(_userName),
                         style: _circleAvatarTextStyle,
                       ),
                     ),
                     const SizedBox(height: 10),
+                    Text(_userName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                        )),
                     Text(
-                      _auth.currentUser?.displayName ?? '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      _auth.currentUser?.email ?? '',
+                      _userEmail,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 14,
@@ -151,16 +201,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   _buildSettingsCard([
-                    // _buildSettingsTile(
-                    //   icon: Icons.history,
-                    //   title: 'Logs',
-                    //   onTap: () => Navigator.push(
-                    //     context,
-                    //     MaterialPageRoute(
-                    //       builder: (context) => const HistoryLogs(),
-                    //     ),
-                    //   ),
-                    // ),
                     _buildSettingsTile(
                       icon: Icons.more_horiz_outlined,
                       title: 'Location Settings',

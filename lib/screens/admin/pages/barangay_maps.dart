@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
 import 'package:logger/logger.dart';
@@ -11,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
+import 'package:toastification/toastification.dart';
 
 class BarangayMaps extends ConsumerStatefulWidget {
   const BarangayMaps({super.key});
@@ -160,29 +162,64 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
         FirebaseDatabase.instance.ref("incident-reports");
 
     dbRef.onChildAdded.listen((DatabaseEvent event) {
-      // _showSnackbar("An incident report was added!");
+      toastification.show(
+        type: ToastificationType.info,
+        style: ToastificationStyle.fillColored,
+        context: context,
+        description: RichText(
+            text: TextSpan(
+          text: 'New detected incident report!',
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        )),
+        icon: const Icon(Icons.delete),
+        autoCloseDuration: const Duration(seconds: 3),
+      );
       _fetchUserReports(120.985560, 14.598317);
     });
 
     dbRef.onChildChanged.listen((DatabaseEvent event) {
-      _showSnackbar("An incident report was updated!");
+      toastification.show(
+        type: ToastificationType.info,
+        style: ToastificationStyle.fillColored,
+        context: context,
+        description: RichText(
+            text: TextSpan(
+          text: 'An incident report was updated!',
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        )),
+        icon: const Icon(Icons.delete),
+        autoCloseDuration: const Duration(seconds: 3),
+      );
       _fetchUserReports(120.985560, 14.598317);
     });
 
     dbRef.onChildRemoved.listen((DatabaseEvent event) {
-      _showSnackbar("An incident report was deleted!");
+      toastification.show(
+        type: ToastificationType.info,
+        style: ToastificationStyle.fillColored,
+        context: context,
+        description: RichText(
+            text: TextSpan(
+          text: 'An incident report was deleted!',
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        )),
+        icon: const Icon(Icons.delete),
+        autoCloseDuration: const Duration(seconds: 3),
+      );
       _fetchUserReports(120.985560, 14.598317);
     });
-  }
-
-  void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _fetchUserReports(double latitude, double longitude) async {
@@ -246,8 +283,6 @@ class _BarangayMapsState extends ConsumerState<BarangayMaps> {
           _loading = false;
           activeIncident = _reports.length;
         });
-
-        _showSnackbar("${_reports.length} incident reports found.");
 
         logger.i(
             'Fetched coordinates successfully: ${_reports.length} locations found.');

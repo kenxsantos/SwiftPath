@@ -145,18 +145,6 @@ class _LoginPageState extends State<LoginPage> {
 
                             final email = _emailController.text.trim();
                             final password = _passwordController.text.trim();
-
-                            if (!AuthValidation.validateFields(
-                              context: context,
-                              email: email,
-                              password: password,
-                            )) {
-                              setState(() {
-                                _saving = false;
-                              });
-                              return;
-                            }
-
                             await AuthValidation.handleFirebaseLogin(
                               context: context,
                               auth: _auth,
