@@ -1,40 +1,26 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class NotificationService {
-  void listenToMessages() {
-    if (kIsWeb) {
-      // Web-specific implementation
-      _listenToWebMessages();
-    } else {
-      // Mobile-specific implementation
-      _listenToMobileMessages();
-    }
-  }
-
-  void _listenToWebMessages() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("Received web message: ${message.notification?.title}");
-      // Handle web message
-    });
-  }
-
-  void _listenToMobileMessages() {
-    FirebaseMessaging.instance.subscribeToTopic('all_users');
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("Received mobile message: ${message.notification?.title}");
-      // Handle mobile message
-    });
-  }
-
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   Future<void> initNotifications() async {
-    if (!kIsWeb) {
-      // Only request permission on mobile
-      await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-    }
+    await _messaging.requestPermission();
+    await _messaging.subscribeToTopic('geofence_entry_notifications');
+    await _messaging.subscribeToTopic('geofence_exit_notifications');
+    await _messaging.subscribeToTopic('geofence_dwell_notifications');
+    await _messaging.subscribeToTopic('moving_geofence_nearby_notifications');
+    // await _messaging.subscribeToTopic('location_change_notifications');
+  }
+
+  void listenToMessages() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        print('Message Title: ${message.notification!.title}');
+        print('Message Body: ${message.notification!.body}');
+      }
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('Notification Clicked: ${message.data}');
+    });
   }
 }
