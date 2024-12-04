@@ -1,8 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'dart:developer' as developer;
+
+import 'package:roam_flutter/RoamTrackingMode.dart';
+import 'package:roam_flutter/roam_flutter.dart';
 
 class CustomFloatingActionButton extends StatelessWidget {
   final Completer<GoogleMapController> controller;
@@ -28,6 +34,16 @@ class CustomFloatingActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () async {
+        try {
+          Roam.startTracking(trackingMode: "active");
+        } on PlatformException {
+          print('Get Current Location Error');
+        }
+
+        Roam.startTracking(trackingMode: "active");
+        Roam.onLocation((location) {
+          print(jsonEncode(location));
+        });
         GoogleMapController mapController = await controller.future;
         developer.log('Floating action button pressed');
         getCurrentUserLocation().then((value) async {
