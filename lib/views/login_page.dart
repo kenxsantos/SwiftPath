@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 import 'package:swiftpath/components/validation.dart';
 import 'package:swiftpath/components/components.dart';
+import 'package:swiftpath/views/signup_page.dart';
+import 'package:swiftpath/views/splash_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -143,18 +145,6 @@ class _LoginPageState extends State<LoginPage> {
 
                             final email = _emailController.text.trim();
                             final password = _passwordController.text.trim();
-
-                            if (!AuthValidation.validateFields(
-                              context: context,
-                              email: email,
-                              password: password,
-                            )) {
-                              setState(() {
-                                _saving = false;
-                              });
-                              return;
-                            }
-
                             await AuthValidation.handleFirebaseLogin(
                               context: context,
                               auth: _auth,
@@ -163,8 +153,11 @@ class _LoginPageState extends State<LoginPage> {
                               onSuccess: () {
                                 setState(() {
                                   _saving = false;
-                                  Navigator.pushReplacementNamed(
-                                      context, '/splash-screen');
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const SplashScreen()));
                                 });
                               },
                               onFailure: () {
@@ -176,7 +169,10 @@ class _LoginPageState extends State<LoginPage> {
                             );
                           },
                           questionPressed: () {
-                            Navigator.pushNamed(context, "/signup");
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const SignUpPage()));
                           },
                         ),
                       ],

@@ -11,6 +11,7 @@ import 'package:roam_flutter/roam_flutter.dart';
 import 'package:roam_flutter/trips_v2/RoamTrip.dart';
 import 'package:roam_flutter/trips_v2/request/RoamTripStops.dart';
 import 'package:logger/logger.dart';
+import 'package:swiftpath/screens/users/pages/show_routes.dart';
 
 class EmergencyVehicles extends StatefulWidget {
   const EmergencyVehicles({super.key});
@@ -26,6 +27,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
   String? myTrip;
   String? tripId;
   String? response;
+  String? myUserId;
 
   var logger = Logger(
     printer: PrettyPrinter(),
@@ -50,7 +52,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
   Future<void> _getUserLocationAndFetchReports() async {
     position = await _getCurrentPosition();
-    _fetchReports(120.9901827, 14.5965241);
+    _fetchReports(120.985560, 14.598317);
   }
 
   Future<Position> _getCurrentPosition() async {
@@ -83,7 +85,7 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
     });
 
     final String roamAiApiKey = dotenv.env['ROAM_AI_API_KEY'] ?? '';
-    const int radiusInMeters = 500;
+    const int radiusInMeters = 650;
     var response = await http.get(
       Uri.parse(
           'https://api.roam.ai/v1/api/search/geofences/?radius=$radiusInMeters&location=$latitude,$longitude&page_limit=15'),
@@ -195,27 +197,32 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
 
                     Center(
                       child: TextButton(
-                        onPressed: () async {
-                          position = await _getCurrentPosition();
-                          Navigator.pushNamed(
-                            context,
-                            '/show-routes',
-                            arguments: {
-                              'incident_report': {
-                                'latitude': report['latitude'],
-                                'longitude': report['longitude'],
-                              },
-                            },
-                          );
-                          // double longitude = report['longitude'];
-                          // double latitude = report['latitude'];
-                          // await _createTrip(longitude, latitude);
-                          // await _startTrip();
-                        },
+                        onPressed: report['status'] == 'Pending'
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ShowRoutes(
+                                      geofenceId: report['geofence_id'],
+                                      destination: {
+                                        'lat': report['latitude'],
+                                        'lng': report['longitude'],
+                                      },
+                                      origin: {
+                                        'lat': position.latitude,
+                                        'lng': position.longitude,
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null, // No action for statuses other than 'Pending'
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 10),
-                          backgroundColor: Colors.red,
+                          backgroundColor: report['status'] == 'Done'
+                              ? Colors.grey // Disabled state color
+                              : Colors.red, // Active state color
                         ),
                         child: const Text(
                           'Take Action',
@@ -357,114 +364,6 @@ class _EmergencyVehiclesState extends State<EmergencyVehicles> {
                   },
                 ),
     );
-  }
-
-  Future<void> _createMovingGeofence() async {
-    final DatabaseReference dbRef = FirebaseDatabase.instance.ref();
-    final String roamAiApiKey =
-        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
-
-    // Geofence data to be sent to the Roam AI API
-    final Map<String, dynamic> geofenceData = {
-      "geometry_type": "circle",
-      "geometry_radius": 500,
-      "color_code": "FF0000",
-      "is_enabled": true,
-      "only_once": true,
-      "users": [
-        "67160e2fc45da22ca9d0f61f",
-        "6718a906acae090b0ad82ebf",
-        "6718a93a8d38d6102302fb9b"
-      ]
-    };
-
-    // Send a request to the Roam AI API
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
-        headers: {
-          'Api-Key': roamAiApiKey,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(geofenceData),
-      );
-
-      if (response.statusCode == 201) {
-        final Map<String, dynamic> responseData =
-            jsonDecode(response.body)['data'];
-
-        // Store geofence data in Firebase
-        final Map<String, dynamic> firebaseGeofenceData = {
-          "geofence_id": responseData["id"],
-          "account_id": responseData["account_id"],
-          "project_id": responseData["project_id"],
-          "geometry_type": responseData["geometry_type"],
-          "geometry_radius": responseData["geometry_radius"],
-          "is_enabled": responseData["is_enabled"],
-          "is_deleted": responseData["is_deleted"],
-          "only_once": responseData["only_once"],
-          "users": responseData["users"],
-          "created_at": responseData["created_at"],
-          "updated_at": responseData["updated_at"],
-        };
-
-        await dbRef.child('moving-geofences').push().set(firebaseGeofenceData);
-        logger.i('Moving geofence created and data stored successfully.');
-        _showDialog('Success', 'Geofence created successfully.');
-      } else {
-        logger.e('Error creating moving geofence: ${response.body}');
-        _showDialog('Error', 'Failed to create geofence.');
-      }
-    } catch (e) {
-      logger.e('Error creating moving geofence: $e');
-      _showDialog('Error', 'An error occurred while creating the geofence.');
-    }
-  }
-
-  void _showDialog(String title, String message) {
-    logger.i('$title: $message');
-  }
-
-  Future<void> _createTrip(double longitude, double latitude) async {
-    try {
-      // Create a trip stop with the given latitude and longitude
-      RoamTripStops stop = RoamTripStops(600, [longitude, latitude]);
-      RoamTrip roamTrip = RoamTrip(isLocal: true);
-      roamTrip.stop?.add(stop);
-
-      await Roam.createTrip(roamTrip, ({roamTripResponse}) {
-        String responseString = jsonEncode(roamTripResponse?.toJson());
-        logger.d('Create online trip response: $responseString');
-        setState(() {
-          tripId = roamTripResponse!.tripDetails!.id;
-          response = 'Create online trip response: $responseString';
-          logger.f(jsonEncode(roamTripResponse.toJson()));
-        });
-      }, ({error}) {
-        String errorString = jsonEncode(error?.toJson());
-        logger.d(errorString);
-      });
-    } catch (e) {
-      logger.e('Error creating trip: $e');
-    }
-  }
-
-  Future<void> _startTrip() async {
-    try {
-      await Roam.startTrip(({roamTripResponse}) {
-        String responseString = jsonEncode(roamTripResponse?.toJson());
-        logger.d('Start trip response: $responseString');
-        setState(() {
-          tripId = roamTripResponse?.tripDetails?.id;
-          response = 'Start trip response: $responseString';
-        });
-      }, ({error}) {
-        String errorString = jsonEncode(error?.toJson());
-        logger.d(errorString);
-      });
-    } catch (e) {
-      logger.e('Error starting trip: $e');
-    }
   }
 
   Future<String> _getAddressFromLatLng(

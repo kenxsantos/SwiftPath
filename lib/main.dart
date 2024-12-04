@@ -1,46 +1,83 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
-import 'package:swiftpath/screens/super_admin/pages/incident_reports.dart';
-import 'package:swiftpath/screens/users/pages/edit_profile_page.dart';
-import 'package:swiftpath/screens/users/pages/report_history_page.dart';
-import 'package:swiftpath/screens/users/pages/report_incident.dart';
-import 'package:swiftpath/screens/users/pages/show_routes.dart';
-import 'package:swiftpath/screens/admin/pages/emergency_vehicle.dart';
-import 'package:swiftpath/views/maps_page.dart';
-import 'package:swiftpath/views/splash_screen.dart';
-import 'firebase_options.dart';
+import 'dart:io';
+import 'dart:math';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:swiftpath/views/landing_page.dart';
-import 'package:swiftpath/views/home_page.dart';
-import 'package:swiftpath/views/login_page.dart';
-import 'package:swiftpath/views/signup_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:roam_flutter/roam_flutter.dart';
 import 'package:logger/logger.dart';
+
+// Firebase imports
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
+import 'package:swiftpath/screens/users/pages/emergency_tracking.dart';
+import 'package:swiftpath/screens/users/pages/location_settings.dart';
+import 'package:swiftpath/screens/users/pages/settings_page.dart';
+import 'package:swiftpath/views/landing_page.dart';
+import 'package:swiftpath/views/maps_page.dart';
+import 'package:swiftpath/views/signup_page.dart';
+import 'firebase_options.dart';
+
+// Roam SDK import
+import 'package:roam_flutter/roam_flutter.dart';
 
 SharedPreferences? prefs;
 
-void main() async {
-  var logger = Logger(
-    printer: PrettyPrinter(),
-  );
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  try {
+    await dotenv.load();
+    // Safe way to print env variables
+    print("\nLoaded environment variables:");
+    if (dotenv.env['GEMINI_API_KEY'] != null) {
+      print(
+          'GEMINI_API_KEY: ${dotenv.env['GEMINI_API_KEY']?.substring(0, 5)}...');
+    } else {
+      print('GEMINI_API_KEY not found');
+    }
+  } catch (e) {
+    print("Error loading .env file: $e");
+  }
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  final String roamAiPublishableKey =
-      dotenv.env['ROAM_AI_PUBLISHABLE_KEY'] ?? '';
-  if (roamAiPublishableKey.isNotEmpty) {
-    Roam.initialize(publishKey: roamAiPublishableKey);
-    logger.d('Roam SDK initialized');
-  } else {
-    logger.e('Roam SDK initialization failed: API key is missing');
-  }
+
+  FirebaseDatabase.instance.databaseURL = dotenv.env['FIREBASE_DATABASE_URL'];
+
+  prefs = await SharedPreferences.getInstance();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await initializeRoam();
+
   runApp(const ProviderScope(child: MyApp()));
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print('Background Message: ${message.messageId}');
+}
+
+Future<void> initializeRoam() async {
+  const String roamKeyEnv = 'ROAM_AI_PUBLISHABLE_KEY';
+  final String roamAiPublishableKey = dotenv.env[roamKeyEnv] ?? '';
+
+  final logger = Logger(printer: PrettyPrinter());
+
+  if (roamAiPublishableKey.isEmpty) {
+    logger.e('Roam SDK initialization failed: API key is missing');
+    return;
+  }
+
+  try {
+    Roam.initialize(publishKey: roamAiPublishableKey);
+
+    logger.d('Roam SDK initialized successfully');
+  } catch (e) {
+    logger.e('Roam SDK initialization failed: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -56,26 +93,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const LandingPage(),
-      routes: {
-        '/landing': (context) => const LandingPage(),
-        '/homepage': (context) => HomePage(),
-        '/login': (context) => const LoginPage(),
-        '/signup': (context) => const SignUpPage(),
-        '/edit-profile': (context) => const EditProfilePage(),
-        '/report-history': (context) => const ReportHistoryPage(),
-        '/maps': (context) => const MapScreen(),
-        '/splash-screen': (context) => const SplashScreen(),
-        '/incident-report': (context) => const ReportIncidentPage(),
-        '/emergency-vehicles': (context) => const EmergencyVehicles(),
-        '/show-routes': (context) => const ShowRoutes(
-              incidentReport: {
-                'latitude': 37.7749, // Example latitude (San Francisco)
-                'longitude': -122.4194, // Example longitude (San Francisco)
-              },
-            ),
-        '/incident-reports': (context) => const IncidentReportsScreen()
-      },
+      home: const LandingPage(), // Replace with the initial page of your app
     );
   }
 }

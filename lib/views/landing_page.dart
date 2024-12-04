@@ -6,7 +6,6 @@ void main() => runApp(const MaterialApp(home: LandingPage()));
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
 
-  static String id = 'landing_page';
   @override
   Widget build(BuildContext context) {
     return Scaffold(

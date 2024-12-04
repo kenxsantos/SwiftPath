@@ -1,19 +1,33 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:roam_flutter/roam_flutter.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:swiftpath/components/routes.dart';
+import 'package:swiftpath/screens/admin/pages/barangay_maps.dart';
+import 'package:swiftpath/services/google_directions_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:logger/logger.dart';
+import 'package:flutter_html/flutter_html.dart' as flutter_html;
+import 'package:http/http.dart' as http;
+import 'package:toastification/toastification.dart';
 
 class ShowRoutes extends ConsumerStatefulWidget {
-  final Map<String, dynamic> incidentReport;
+  final Map<String, dynamic> destination;
+  final Map<String, dynamic> origin;
+  final String geofenceId;
 
   const ShowRoutes({
     super.key,
-    required this.incidentReport,
+    required this.geofenceId,
+    required this.destination,
+    required this.origin,
   });
 
   @override
@@ -21,15 +35,17 @@ class ShowRoutes extends ConsumerStatefulWidget {
 }
 
 class _ShowRoutesState extends ConsumerState<ShowRoutes> {
-  final String googleMapKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  LatLng? _currentLocation;
+
   final Completer<GoogleMapController> _controller = Completer();
   final LocationSettings locationSettings = const LocationSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 100,
   );
   bool showAutoCompleteSearchBar = true;
-
-  final Set<Polyline> _polylines = <Polyline>{};
+  final String googleMapsApiKey =
+      dotenv.env['GOOGLE_MAPS_API_KEY'] ?? 'API Key not found';
+  String socketUrl = dotenv.env['SOCKET_URL'] ?? 'Socket URL not found';
   var radiusValue = 3000.0;
   bool getDirections = false;
   var uuid = const Uuid();
@@ -37,26 +53,78 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     printer: PrettyPrinter(),
   );
 
-  late LatLng incidentReport;
+  late LatLng destination;
+  late LatLng origin;
 
   List<LatLng> polylineCoordinates = [];
   late StreamSubscription<Position> positionStream;
   BitmapDescriptor originIcon = BitmapDescriptor.defaultMarker;
   BitmapDescriptor destinationIcon = BitmapDescriptor.defaultMarker;
   BitmapDescriptor userIcon = BitmapDescriptor.defaultMarker;
-  Position? currentLocation;
-  late LatLng incidentLocation;
+  final GoogleDirectionsService directionsService =
+      GoogleDirectionsService('AIzaSyC2cU6RHwIR6JskX2GHe-Pwv1VepIHkLCg');
+
+  bool _isLoading = false;
+  List<Map<String, dynamic>> routes = [];
+  String? myUserId;
+  late IO.Socket _socket;
+  LatLng _currentPosition = const LatLng(0, 0);
+  Set<Polyline> polylines = <Polyline>{};
+  bool is_tracking = false;
+  bool is_active = true;
   @override
   void initState() {
     super.initState();
-    getCurrentUserLocation();
+    _getCurrentPosition();
     setCustomMarkerIcon();
 
-    incidentLocation = LatLng(
-      widget.incidentReport['latitude'],
-      widget.incidentReport['longitude'],
+    destination = LatLng(
+      widget.destination['lat'],
+      widget.destination['lng'],
     );
-    getCurrentLocationAndTrackMovement();
+    origin = LatLng(
+      widget.origin['lat'],
+      widget.origin['lng'],
+    );
+    _fetchAndDisplayRoutes();
+    _refreshUserTracking();
+  }
+
+  Future<void> _createMovingGeofence(String userId) async {
+    final String roamAiApiKey =
+        dotenv.env['ROAM_AI_API_KEY'] ?? ''; // Roam API key
+
+    // Geofence data to be sent to the Roam AI API
+    final Map<String, dynamic> geofenceData = {
+      "geometry_type": "circle",
+      "geometry_radius": 500,
+      "color_code": "FF0000",
+      "is_enabled": true,
+      "only_once": true,
+      "users": [
+        userId,
+        "674489ffacae092dfe16fa86",
+      ]
+    };
+
+    // Send a request to the Roam AI API
+    try {
+      await http.post(
+        Uri.parse('https://api.roam.ai/v1/api/moving-geofence/'),
+        headers: {
+          'Api-Key': roamAiApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(geofenceData),
+      );
+    } catch (e) {
+      logger.e('Error creating moving geofence: $e');
+      _showDialog('Error', 'An error occurred while creating the geofence.');
+    }
+  }
+
+  void _showDialog(String title, String message) {
+    logger.i('$title: $message');
   }
 
   @override
@@ -66,16 +134,58 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null) {
       setState(() {
-        incidentLocation = LatLng(
-          arguments['incident_report']['latitude'],
-          arguments['incident_report']['longitude'],
+        destination = LatLng(
+          arguments['lat'],
+          arguments['lng'],
+        );
+        origin = LatLng(
+          arguments['origin']['lat'],
+          arguments['origin']['lng'],
         );
       });
     }
   }
 
+  Future<void> _fetchAndDisplayRoutes() async {
+    try {
+      final fetchedRoutes = await directionsService.fetchRoutes(
+        origin: origin,
+        destination: destination,
+      );
+      logger.i('Fetched routes: $fetchedRoutes');
+
+      if (fetchedRoutes.isNotEmpty) {
+        setState(() {
+          routes = fetchedRoutes.map<Map<String, dynamic>>((route) {
+            return {
+              'summary': route['summary'],
+              'distance': route['distance'],
+              'duration': route['duration'],
+              'start_address': route['start_address'],
+              'end_address': route['end_address'],
+              'overview_polyline': route['overview_polyline'],
+              'steps': route['steps'] ?? [],
+            };
+          }).toList();
+
+          // Add the first route's polyline to the map as default
+          final polylinePoints = directionsService.decodePolyline(
+            fetchedRoutes[0]['overview_polyline'],
+          );
+          polylines.add(Polyline(
+            polylineId: const PolylineId('default_route_polyline'),
+            points: polylinePoints,
+            color: Colors.blue,
+            width: 5,
+          ));
+        });
+      }
+    } catch (e) {
+      print('Error fetching routes: $e');
+    }
+  }
+
   void dispose() {
-    // Cancel the position stream to avoid memory leaks
     positionStream.cancel();
     super.dispose();
   }
@@ -83,49 +193,95 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: currentLocation == null
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : SingleChildScrollView(
-              child: Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height,
-                          width: MediaQuery.of(context).size.width,
-                          child: GoogleMap(
-                            initialCameraPosition: CameraPosition(
-                              target: LatLng(currentLocation!.latitude,
-                                  currentLocation!.longitude),
-                            ),
-                            mapType: MapType.normal,
-                            onMapCreated: (controller) =>
-                                _controller.complete(controller),
-                            markers: {
-                              Marker(
-                                markerId: const MarkerId('origin'),
-                                position: LatLng(currentLocation!.latitude,
-                                    currentLocation!.longitude),
-                                icon: originIcon,
-                              ),
-                              Marker(
-                                markerId: const MarkerId('destination'),
-                                position: incidentLocation,
-                                icon: destinationIcon,
-                              ),
-                            },
-                            polylines: _polylines,
-                          ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            children: [
+              Stack(
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height,
+                    width: MediaQuery.of(context).size.width,
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(origin.latitude, origin.longitude),
+                        zoom: 15.0,
+                      ),
+                      mapType: MapType.normal,
+                      myLocationEnabled: true,
+                      onMapCreated: (controller) =>
+                          _controller.complete(controller),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('origin'),
+                          position: LatLng(origin.latitude, origin.longitude),
+                          icon: originIcon,
                         ),
-                      ],
+                        Marker(
+                          markerId: const MarkerId('destination'),
+                          position: destination,
+                          icon: destinationIcon,
+                        ),
+                      },
+                      polylines: polylines,
                     ),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    bottom: 130.0,
+                    right: 10,
+                    child: SizedBox(
+                      height: 60.0, // Increase height
+                      width: 60.0, // Increase width
+                      child: FloatingActionButton(
+                        backgroundColor: Colors.red.shade400,
+                        shape: const CircleBorder(),
+                        onPressed: showRoutesPopup,
+                        child: const Icon(
+                          Icons.route,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 20,
+                    height: 50,
+                    left: 20,
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: is_active
+                            ? Colors.red.shade400
+                            : Colors.white, // Background color
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(10), // Rounded corners
+                        ),
+                      ),
+                      onPressed: () {
+                        if (is_active) {
+                          _showConfirmationDialog(context);
+                        } else {
+                          actionTakenSuccessfully();
+                        }
+                      },
+                      child: Text(
+                        is_active ? 'Start Trip' : 'End Trip',
+                        style: TextStyle(
+                          fontSize: 16, // Adjust font size
+                          color: is_active
+                              ? Colors.white
+                              : Colors.red.shade400, // Text color
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -147,148 +303,287 @@ class _ShowRoutesState extends ConsumerState<ShowRoutes> {
     });
   }
 
-  Future<Position> getCurrentUserLocation() async {
+  Future<void> _getCurrentPosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
+      // Show error to user
+      return Future.error(
+          'Location services are disabled. Please enable them.');
     }
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
+        return Future.error('Location permissions are denied.');
       }
     }
-
     if (permission == LocationPermission.deniedForever) {
       return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
+          'Location permissions are permanently denied. Please enable them in settings.');
     }
-    Position position =
-        await Geolocator.getCurrentPosition(locationSettings: locationSettings);
-
-    setState(() {
-      currentLocation = position;
-    });
-
-    // Initialize the GoogleMapController and set initial camera position
-    GoogleMapController controller = await _controller.future;
-    controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 13.5,
-        ),
-      ),
-    );
-    positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high, // Set accuracy as per your needs
-        distanceFilter: 10, // Update every 10 meters; adjust as needed
-      ),
-    ).listen((Position? position) {
-      if (position != null) {
-        setState(() {
-          currentLocation = position;
-        });
-
-        // Animate the camera to the new position
-        controller.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(
-                  position.latitude,
-                  position
-                      .longitude), // Keep the same zoom level or adjust as needed
-            ),
-          ),
-        );
-
-        print(
-            'User position updated: ${position.latitude}, ${position.longitude}');
-      }
-    });
-
-    return position;
-  }
-
-  void getCurrentLocationAndTrackMovement() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
-
-    // Get the initial position
-    Position position = await Geolocator.getCurrentPosition();
-    setState(() {
-      currentLocation = position;
-    });
-
-    // Initialize the polyline to the incident location
-    _getPolylinesPoints(
-      LatLng(position.latitude, position.longitude),
-      incidentLocation,
-    );
-
-    // Start listening for position changes to update polylines in real-time
-    positionStream = Geolocator.getPositionStream(
+    Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
         distanceFilter: 10,
       ),
     ).listen((Position position) {
       setState(() {
-        currentLocation = position;
+        _currentPosition = LatLng(position.latitude, position.longitude);
       });
-
-      // Update the polyline each time the user moves
-      _getPolylinesPoints(
-        LatLng(position.latitude, position.longitude),
-        incidentLocation,
-      );
+      createTrackingLocation();
+      _controller.future.then((GoogleMapController controller) {
+        controller.animateCamera(
+          CameraUpdate.newLatLngZoom(_currentPosition, 15),
+        );
+      }).catchError((error) {
+        print('Error updating map camera: $error');
+      });
     });
   }
 
-  void _getPolylinesPoints(LatLng startLocation, LatLng endLocation) async {
-    PolylinePoints polylinePoints = PolylinePoints();
-    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-      googleApiKey: googleMapKey,
-      request: PolylineRequest(
-        origin: PointLatLng(startLocation.latitude, startLocation.longitude),
-        destination: PointLatLng(endLocation.latitude, endLocation.longitude),
-        mode: TravelMode.driving,
+  void _showConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("You are about to start the trip."),
+        content: const Text("Are you sure you want to take this action?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade400,
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+              createTrackingLocation();
+              setState(() {
+                is_active = false;
+                toastification.show(
+                  type: ToastificationType.success,
+                  style: ToastificationStyle.fillColored,
+                  context: context,
+                  description: RichText(
+                      text: TextSpan(
+                    text: 'Trip started successfully',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  )),
+                  icon: const Icon(Icons.check),
+                  autoCloseDuration: const Duration(seconds: 3),
+                );
+              });
+            },
+            child: const Text("Confirm"),
+          ),
+        ],
       ),
     );
-    if (result.points.isNotEmpty) {
-      polylineCoordinates.clear(); // Clear any previous data
-      for (PointLatLng point in result.points) {
-        LatLng latLngPoint = LatLng(point.latitude, point.longitude);
-        polylineCoordinates.add(latLngPoint);
-      }
-      print("Polyline Coordinates: $polylineCoordinates"); // Debugging
+  }
 
-      setState(() {
-        _polylines.add(Polyline(
-          polylineId: const PolylineId('polyline'),
-          color: Colors.blue,
-          width: 5,
-          points: polylineCoordinates,
-        ));
-      });
-    } else {
-      logger.e("No points found in polyline result.");
+  Future<void> createTrackingLocation() async {
+    try {
+      if (myUserId == null) {
+        await _initializeUserTracking();
+      } else {
+        await _refreshUserTracking();
+      }
+      await _createMovingGeofence(myUserId!);
+
+      final payload = {
+        "userId": myUserId,
+        "origin": {
+          "lat": _currentPosition.latitude,
+          "lng": _currentPosition.longitude,
+        },
+        "is_tracking": is_tracking,
+      };
+
+      // Reference to Firebase Realtime Database
+      final databaseReference =
+          FirebaseDatabase.instance.ref("emergency-vehicle-location");
+
+      // Check if user exists in the database
+      final userRef = databaseReference.child(myUserId!);
+      final snapshot = await userRef.get();
+
+      if (snapshot.exists) {
+        // User exists, update their location
+        await userRef.update({
+          'origin': payload['origin'],
+          'is_tracking': payload['is_tracking'],
+        });
+        print("Location updated successfully for userId: $myUserId");
+      } else {
+        // User does not exist, create a new entry
+        await userRef.set(payload);
+        print("New location added successfully for userId: $myUserId");
+      }
+    } catch (e) {
+      print("Error creating tracking location: $e");
     }
+  }
+
+  Future<void> _initializeUserTracking() async {
+    await Roam.createUser(
+        description: "emergency_vehicle",
+        callBack: ({user}) {
+          setState(() {
+            myUserId = jsonDecode(user!)["userId"];
+          });
+        });
+    Roam.startTracking(trackingMode: "active");
+    setState(() => is_tracking = true);
+  }
+
+  Future<void> _refreshUserTracking() async {
+    await Roam.getListenerStatus(callBack: ({user}) {
+      setState(() {
+        myUserId = jsonDecode(user!)["userId"];
+      });
+    });
+    setState(() => is_tracking = true);
+  }
+
+  Future<void> actionTakenSuccessfully() async {
+    final DatabaseReference reportsDbRef =
+        FirebaseDatabase.instance.ref("incident-reports");
+    final DatabaseReference vehiclesDbRef =
+        FirebaseDatabase.instance.ref("emergency-vehicle-location");
+
+    String geofenceId = widget.geofenceId;
+
+    try {
+      // Fetch reports for the given geofence ID
+      final event = await reportsDbRef
+          .orderByChild('geofence_id')
+          .equalTo(geofenceId)
+          .once();
+
+      if (event.snapshot.value != null) {
+        print('Reports found: ${event.snapshot.value}');
+        final reports = Map<String, dynamic>.from(event.snapshot.value as Map);
+
+        // Update the status of all reports
+        for (final reportKey in reports.keys) {
+          await reportsDbRef.child(reportKey).update({'status': 'Done'});
+        }
+
+        // Update emergency vehicle status to `is_tracking: false`
+        final vehiclesSnapshot = await vehiclesDbRef.once();
+        if (vehiclesSnapshot.snapshot.exists) {
+          final vehicles =
+              Map<String, dynamic>.from(vehiclesSnapshot.snapshot.value as Map);
+
+          for (final vehicleKey in vehicles.keys) {
+            final vehicleData = vehicles[vehicleKey];
+            if (vehicleData['userId'] == myUserId) {
+              // Match vehicle by userId
+              await vehiclesDbRef
+                  .child(vehicleKey)
+                  .update({'is_tracking': false});
+              print('Updated vehicle tracking status to false for $vehicleKey');
+            }
+          }
+        }
+
+        if (!mounted) return; // Ensure widget is still mounted
+        print('Navigating to BarangayMaps...');
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BarangayMaps()),
+        );
+        toastification.show(
+          type: ToastificationType.error,
+          style: ToastificationStyle.fillColored,
+          context: context,
+          description: RichText(
+              text: TextSpan(
+            text: 'Trip ended successfully',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          )),
+          icon: const Icon(Icons.error),
+          autoCloseDuration: const Duration(seconds: 3),
+        );
+        try {
+          await Roam.stopTracking();
+        } catch (error) {
+          toastification.show(
+            type: ToastificationType.error,
+            style: ToastificationStyle.fillColored,
+            context: context,
+            description: RichText(
+                text: TextSpan(
+              text: 'Failed to stop tracking',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            )),
+            icon: const Icon(Icons.error),
+            autoCloseDuration: const Duration(seconds: 3),
+          );
+        }
+      } else {
+        print('No matching reports found.');
+        _showSnackBar(context, 'No matching reports found.');
+      }
+    } catch (error) {
+      print('Failed to update status: $error');
+      _showSnackBar(context, 'Failed to update status: $error');
+    }
+  }
+
+// Helper to show snackbar
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void showRoutesPopup() {
+    if (routes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No routes available to display')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return RoutesPopup(
+          routes: routes, // Pass the fetched routes
+          onRouteSelected: (polyline) {
+            // Update the map with the selected route's polyline
+            setState(() {
+              polylines.clear(); // Clear existing polylines
+              final polylinePoints = directionsService.decodePolyline(polyline);
+              polylines.add(Polyline(
+                polylineId: const PolylineId('selected_route_polyline'),
+                points: polylinePoints,
+                color: Colors.green,
+                width: 5,
+              ));
+            });
+          },
+        );
+      },
+    );
   }
 }

@@ -59,13 +59,12 @@ class TopScreenImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            fit: BoxFit.contain,
-            image: AssetImage('assets/images/$screenImageName'),
-          ),
+    return Container(
+      height: 180, // Specify the desired height
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          fit: BoxFit.contain,
+          image: AssetImage('assets/$screenImageName'),
         ),
       ),
     );
@@ -89,36 +88,51 @@ class ScreenTitle extends StatelessWidget {
 }
 
 class CustomTextField extends StatelessWidget {
-  const CustomTextField(
-      {super.key,
-      required this.controller,
-      required this.obscureText,
-      required this.hintText});
-
-  final TextEditingController controller;
-  final bool obscureText;
   final String hintText;
+  final bool obscureText;
+  final TextEditingController controller;
+  final Icon? prefixIcon;
+
+  const CustomTextField({
+    Key? key,
+    required this.hintText,
+    required this.obscureText,
+    required this.controller,
+    this.prefixIcon,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 30,
-      ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(
-          width: 1, // Adjust the border width as needed
-          color: Colors.grey, // Update to the appropriate color
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
-          border: InputBorder.none, // Removes the default border
+          prefixIcon: prefixIcon,
           hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );

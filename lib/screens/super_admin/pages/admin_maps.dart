@@ -38,32 +38,114 @@ class _AdminMapsState extends ConsumerState<AdminMaps> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Admin Maps Page")),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: const Text(
+          "Incident Monitoring",
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black54),
+            onPressed: _fetchUserReports,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Stack(
         children: [
-          // Google Map
+          // Google Map with custom styling
           GoogleMap(
             initialCameraPosition: const CameraPosition(
               target: LatLng(14.5965241, 120.9901827),
               zoom: 13.5,
             ),
             mapType: MapType.normal,
-            onMapCreated: (controller) => _controller.complete(controller),
+            onMapCreated: (GoogleMapController controller) {
+              _controller.complete(controller);
+              controller.setMapStyle(_mapStyle);
+            },
             markers: _markers,
           ),
+
+          // Loading indicator
+          if (_loading)
+            Container(
+              color: Colors.black.withOpacity(0.1),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+
+          // Stats Card
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Active Incidents',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_markers.length}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Action Buttons
           Positioned(
             bottom: 20.0,
-            left: 20.0,
-            child: FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const IncidentReportsScreen()),
-                );
-              },
-              backgroundColor: Colors.red,
-              child: const Icon(Icons.report, color: Colors.white),
+            right: 20.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'reports',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const IncidentReportsScreen(),
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.white,
+                  child: const Icon(Icons.report_outlined, color: Colors.red),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: 'filter',
+                  onPressed: () {
+                    // Add filter functionality
+                  },
+                  backgroundColor: Colors.white,
+                  child: const Icon(Icons.filter_list, color: Colors.black54),
+                ),
+              ],
             ),
           ),
         ],
@@ -81,17 +163,28 @@ class _AdminMapsState extends ConsumerState<AdminMaps> {
       final DataSnapshot snapshot = await dbRef.child('incident-reports').get();
 
       if (snapshot.exists) {
-        Map<String, dynamic> reports =
+        // Iterate through geofence IDs
+        Map<String, dynamic> geofenceGroups =
             Map<String, dynamic>.from(snapshot.value as Map);
 
-        reports.forEach((key, value) {
-          final reportData = Map<String, dynamic>.from(value);
-          final latitude = reportData['latitude'];
-          final longitude = reportData['longitude'];
+        geofenceGroups.forEach((geofenceId, reports) {
+          // Iterate through reports under each geofence ID
+          Map<String, dynamic> incidentReports =
+              Map<String, dynamic>.from(reports as Map);
 
-          if (latitude != null && longitude != null) {
-            setMarker(LatLng(latitude, longitude), info: "Incident Report");
-          }
+          incidentReports.forEach((reportKey, reportValue) {
+            final reportData = Map<String, dynamic>.from(reportValue);
+            final latitude = reportData['latitude'];
+            final longitude = reportData['longitude'];
+            final reporterName = reportData['reporter_name'];
+
+            if (latitude != null && longitude != null) {
+              setMarker(
+                LatLng(latitude, longitude),
+                info: "Reported by $reporterName",
+              );
+            }
+          });
         });
 
         setState(() {
@@ -119,11 +212,34 @@ class _AdminMapsState extends ConsumerState<AdminMaps> {
         markerId: MarkerId('marker_$counter'),
         position: point,
         infoWindow: InfoWindow(title: info),
-        onTap: () {},
         icon: BitmapDescriptor.defaultMarker);
 
     setState(() {
       _markers.add(marker);
     });
   }
+
+  // Add this variable for custom map styling
+  final String _mapStyle = '''
+    [
+      {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "color": "#e9e9e9"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [
+          {
+            "color": "#ffffff"
+          }
+        ]
+      }
+    ]
+  ''';
 }

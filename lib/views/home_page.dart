@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:swiftpath/components/components.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-import 'package:swiftpath/components/validation.dart';
+import 'package:swiftpath/views/login_page.dart';
+import 'package:swiftpath/views/signup_page.dart';
+import 'package:swiftpath/views/splash_screen.dart';
 
 class HomePage extends StatelessWidget {
   HomePage({super.key});
   static String id = 'home_page';
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   Future<bool> _checkIfLoggedIn() async {
     final user = _auth.currentUser;
@@ -28,7 +26,8 @@ class HomePage extends StatelessWidget {
         }
         if (snapshot.data == true) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacementNamed(context, '/splash-screen');
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const SplashScreen()));
           });
         }
         return Scaffold(
@@ -60,7 +59,11 @@ class HomePage extends StatelessWidget {
                             child: CustomButton(
                               buttonText: 'Login',
                               onPressed: () {
-                                Navigator.pushNamed(context, '/login');
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const LoginPage()));
                               },
                             ),
                           ),
@@ -71,36 +74,15 @@ class HomePage extends StatelessWidget {
                               buttonText: 'Sign Up',
                               isOutlined: true,
                               onPressed: () {
-                                Navigator.pushNamed(context, '/signup');
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignUpPage()));
                               },
                             ),
                           ),
                           const SizedBox(height: 25),
-                          const Text(
-                            'Sign up using',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: () =>
-                                    AuthValidation.signInWithGoogle(
-                                        context: context,
-                                        auth: _auth,
-                                        googleSignIn: _googleSignIn),
-                                icon: CircleAvatar(
-                                  radius: 25,
-                                  backgroundColor: Colors.transparent,
-                                  child: Image.asset(
-                                      'assets/images/icons/google.png'),
-                                ),
-                              ),
-                            ],
-                          )
                         ],
                       ),
                     ),
