@@ -153,11 +153,6 @@ class _LoginPageState extends State<LoginPage> {
                               onSuccess: () {
                                 setState(() {
                                   _saving = false;
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const SplashScreen()));
                                 });
                               },
                               onFailure: () {

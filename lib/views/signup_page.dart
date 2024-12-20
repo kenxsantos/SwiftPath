@@ -24,6 +24,9 @@ class _SignUpPageState extends State<SignUpPage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   bool _saving = false;
 
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
+
   void _resetForm() {
     _nameController.clear();
     _emailController.clear();
@@ -69,14 +72,36 @@ class _SignUpPageState extends State<SignUpPage> {
                         const SizedBox(height: 20),
                         CustomTextField(
                           hintText: 'Password',
-                          obscureText: true,
+                          obscureText: !_showPassword,
                           controller: _passwordController,
+                          suffixIcon: Icon(
+                            _showPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.grey,
+                          ),
+                          onSuffixIconPressed: () {
+                            setState(() {
+                              _showPassword = !_showPassword;
+                            });
+                          },
                         ),
                         const SizedBox(height: 20),
                         CustomTextField(
                           hintText: 'Confirm Password',
-                          obscureText: true,
+                          obscureText: !_showConfirmPassword,
                           controller: _confirmPassController,
+                          suffixIcon: Icon(
+                            _showConfirmPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.grey,
+                          ),
+                          onSuffixIconPressed: () {
+                            setState(() {
+                              _showConfirmPassword = !_showConfirmPassword;
+                            });
+                          },
                         ),
                         const SizedBox(height: 20),
                         CustomBottomScreen(
@@ -119,8 +144,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          const SplashScreen(),
+                                      builder: (context) => const LoginPage(),
                                     ),
                                   );
                                 });

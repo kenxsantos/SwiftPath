@@ -208,7 +208,7 @@ class AuthValidation {
       'invalid-email': 'The email address is not valid.',
       'email-already-in-use': 'The email address is already in use.',
       'weak-password': 'The password is too weak.',
-      'operation-not-allowed': 'Email/password sign up is not enabled.',
+      'operation-not-allowed': 'Email/password sign-up is not enabled.',
       'invalid-credential': 'The credentials are invalid or expired.',
     };
 
@@ -218,7 +218,11 @@ class AuthValidation {
         password: password,
       );
       final User? user = userCredential.user;
+
       if (user != null) {
+        await user.sendEmailVerification(); // Send verification email
+
+        // Save user data in Realtime Database
         await FirebaseDatabase.instance
             .ref()
             .child('users')
@@ -228,33 +232,34 @@ class AuthValidation {
           'email': email,
           'image': '',
           'created_at': DateTime.now().toIso8601String(),
+          'email_verified': false,
         });
+
+        // Notify the user
+        toastification.show(
+          context: context,
+          type: ToastificationType.success,
+          style: ToastificationStyle.fillColored,
+          title: const Text('Please Verify your account!'),
+          description: const Text(
+            'A verification email has been sent. Please verify your email before logging in.',
+          ),
+          icon: const Icon(Icons.email),
+          autoCloseDuration: const Duration(seconds: 5),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
       }
-      toastification.show(
-        context: context,
-        type: ToastificationType.success,
-        style: ToastificationStyle.fillColored,
-        title: const Text('Account Created Successfully!'),
-        icon: const Icon(Icons.check),
-        autoCloseDuration: const Duration(seconds: 3),
-      );
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
       if (e is FirebaseAuthException) {
         errorMessage = signUpErrorMessages[e.code] ??
             'An unexpected error occurred: ${e.message}.';
-        showAlert(
-          context: context,
-          message: errorMessage,
-        );
-      } else {
-        errorMessage = 'An unknown error occurred: ${e.toString()}';
-        showAlert(
-          context: context,
-          message: errorMessage,
-        );
       }
+      showAlert(context: context, message: errorMessage);
       onFailure();
     }
   }
@@ -278,74 +283,128 @@ class AuthValidation {
     };
 
     try {
-      await auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      User? user = userCredential.user;
+
+      if (user != null && !user.emailVerified) {
+        // Email not verified
+        toastification.show(
+          context: context,
+          type: ToastificationType.warning,
+          style: ToastificationStyle.fillColored,
+          title: const Text('Email Not Verified'),
+          description: const Text(
+            'Please verify your email before logging in.',
+          ),
+          icon: const Icon(Icons.warning),
+          autoCloseDuration: const Duration(seconds: 5),
+        );
+        await auth.signOut();
+        onFailure();
+        return;
+      }
+
+      // Successful login
       toastification.show(
         context: context,
         type: ToastificationType.success,
         style: ToastificationStyle.fillColored,
-        title: const Text('Login Successfully!'),
+        title: const Text('Login Successful!'),
         icon: const Icon(Icons.check),
         autoCloseDuration: const Duration(seconds: 3),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SplashScreen()),
       );
       onSuccess();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
-
       if (e is FirebaseAuthException) {
         errorMessage = errorMessages[e.code] ??
             'An unexpected error occurred: ${e.message}.';
-        showAlert(
-          context: context,
-          message: errorMessage,
-        );
-      } else {
-        errorMessage = 'An unknown error occurred: ${e.toString()}';
-        showAlert(
-          context: context,
-          message: errorMessage,
-        );
       }
+      showAlert(context: context, message: errorMessage);
       onFailure();
     }
   }
 
-  static Future<void> signInWithGoogle(
-      {required BuildContext context,
-      required FirebaseAuth auth,
-      required GoogleSignIn googleSignIn}) async {
+  static Future<void> signInWithGoogle({
+    required BuildContext context,
+    required FirebaseAuth auth,
+    required GoogleSignIn googleSignIn,
+  }) async {
     try {
-      final GoogleUser = await googleSignIn.signIn();
-      if (GoogleUser == null) {
-        // User cancelled the sign-in
+      // Show loading indicator while signing in
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      // Trigger Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        Navigator.pop(context);
+
         return;
       }
 
-      final GoogleAuth = await GoogleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: GoogleAuth.accessToken,
-        idToken: GoogleAuth.idToken,
+      if (googleAuth.idToken == null || googleAuth.accessToken == null) {
+        Navigator.pop(context);
+        _showErrorDialog(context, 'Authentication failed. Please try again.');
+        return;
+      }
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase
       UserCredential userCredential =
           await auth.signInWithCredential(credential);
       User? userData = userCredential.user;
 
-      if (userData == null) {
-        print('Error: User credential is null.');
-        return;
+      if (userData != null) {
+        if (!userData.emailVerified) {
+          print('Google sign-in user email is not verified.');
+        }
+        await FirebaseDatabase.instance
+            .ref()
+            .child('users')
+            .child(userData.uid)
+            .set({
+          'name': userData.displayName,
+          'email': userData.email,
+          'image': userData.photoURL,
+          'sign_in_method': 'Google',
+          'last_login': DateTime.now().toIso8601String(),
+        });
+        Navigator.pop(context); // Dismiss loading
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SplashScreen()),
+        );
+      } else {
+        throw FirebaseAuthException(
+            code: 'null-user', message: 'User data is null after sign-in.');
       }
-
-      // Navigate to the splash screen after successful sign-in
-      Navigator.push(context,
-          MaterialPageRoute(builder: (context) => const SplashScreen()));
     } catch (e) {
-      print('Sign in failed: $e');
-      _showErrorDialog(context, e.toString());
+      Navigator.pop(context);
+      if (e is FirebaseAuthException) {
+        _showErrorDialog(context, 'Authentication error: ${e.message}');
+      } else {
+        _showErrorDialog(context, 'An unexpected error occurred: $e');
+      }
     }
   }
 

@@ -91,14 +91,16 @@ class CustomTextField extends StatelessWidget {
   final String hintText;
   final bool obscureText;
   final TextEditingController controller;
-  final Icon? prefixIcon;
+  final Icon? suffixIcon;
+  final VoidCallback? onSuffixIconPressed;
 
   const CustomTextField({
     Key? key,
     required this.hintText,
     required this.obscureText,
     required this.controller,
-    this.prefixIcon,
+    this.suffixIcon,
+    this.onSuffixIconPressed,
   }) : super(key: key);
 
   @override
@@ -120,7 +122,12 @@ class CustomTextField extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         decoration: InputDecoration(
-          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon != null
+              ? IconButton(
+                  icon: suffixIcon!,
+                  onPressed: onSuffixIconPressed,
+                )
+              : null,
           hintText: hintText,
           hintStyle: TextStyle(color: Colors.grey[400]),
           border: OutlineInputBorder(
